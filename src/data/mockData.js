@@ -1,0 +1,87 @@
+/* Mock data */
+export const SHOTS_HOME = [
+  { x: 560, y: 180, xg: .12, outcome: "saved", player: "M. Sherif", min: 7 },
+  { x: 520, y: 250, xg: .08, outcome: "saved", player: "M. Sherif", min: 31 },
+  { x: 595, y: 210, xg: .42, outcome: "goal", player: "M. Sherif", min: 36 },
+  { x: 610, y: 235, xg: .65, outcome: "goal", player: "H. El Shahat", min: 58 },
+  { x: 540, y: 290, xg: .05, outcome: "wide", player: "A. Dieng", min: 72 },
+  { x: 565, y: 195, xg: .18, outcome: "saved", player: "M. Sherif", min: 85 },
+  { x: 480, y: 260, xg: .03, outcome: "blocked", player: "O. Kamal", min: 88 },
+];
+export const SHOTS_AWAY = [
+  { x: 120, y: 240, xg: .07, outcome: "blocked", player: "A. Kahraba", min: 13 },
+  { x: 160, y: 280, xg: .04, outcome: "wide", player: "Z. Emam", min: 43 },
+  { x: 100, y: 220, xg: .76, outcome: "goal", player: "A. Kahraba", min: 63 },
+  { x: 140, y: 190, xg: .09, outcome: "saved", player: "S. Mustafa", min: 68 },
+  { x: 180, y: 260, xg: .06, outcome: "wide", player: "W. Sharabini", min: 78 },
+];
+export const PLAYERS = [
+  { name: "M. Sherif", team: "home", pos: "FW", goals: 1, shots: 4, passes: 24, passAcc: 79, tackles: 1, duels: 8, duelsW: 5, dist: 9.8, rating: 8.2 },
+  { name: "H. El Shahat", team: "home", pos: "RW", goals: 1, shots: 1, passes: 38, passAcc: 84, tackles: 2, duels: 11, duelsW: 7, dist: 10.4, rating: 7.9 },
+  { name: "A. Dieng", team: "home", pos: "CM", goals: 0, shots: 1, passes: 52, passAcc: 88, tackles: 4, duels: 14, duelsW: 9, dist: 11.2, rating: 7.4 },
+  { name: "O. Kamal", team: "home", pos: "CB", goals: 0, shots: 1, passes: 48, passAcc: 91, tackles: 5, duels: 12, duelsW: 8, dist: 9.1, rating: 7.1 },
+  { name: "Y. Ibrahim", team: "home", pos: "LB", goals: 0, shots: 0, passes: 41, passAcc: 82, tackles: 3, duels: 9, duelsW: 5, dist: 10.8, rating: 6.8 },
+  { name: "A. Kahraba", team: "away", pos: "FW", goals: 1, shots: 2, passes: 18, passAcc: 72, tackles: 0, duels: 7, duelsW: 3, dist: 9.2, rating: 7.5 },
+  { name: "Z. Emam", team: "away", pos: "LW", goals: 0, shots: 1, passes: 31, passAcc: 78, tackles: 1, duels: 10, duelsW: 4, dist: 10.1, rating: 6.5 },
+  { name: "O. El Said", team: "away", pos: "CM", goals: 0, shots: 0, passes: 44, passAcc: 85, tackles: 3, duels: 13, duelsW: 7, dist: 10.9, rating: 6.3 },
+  { name: "M. Abdelshafy", team: "away", pos: "CB", goals: 0, shots: 0, passes: 35, passAcc: 87, tackles: 6, duels: 15, duelsW: 9, dist: 9.5, rating: 5.8 },
+  { name: "W. Sharabini", team: "away", pos: "RW", goals: 0, shots: 1, passes: 22, passAcc: 75, tackles: 1, duels: 8, duelsW: 3, dist: 9.7, rating: 5.9 },
+];
+export const NET_HOME = [
+  { id: 1, name: "GK", x: 65, y: 220, passes: 38 }, { id: 2, name: "Kamal", x: 150, y: 140, passes: 48 },
+  { id: 3, name: "CB", x: 150, y: 300, passes: 42 }, { id: 4, name: "Ibrahim", x: 230, y: 80, passes: 41 },
+  { id: 5, name: "RB", x: 230, y: 360, passes: 36 }, { id: 6, name: "Dieng", x: 310, y: 200, passes: 52 },
+  { id: 7, name: "CM", x: 310, y: 280, passes: 45 }, { id: 8, name: "El Shahat", x: 440, y: 100, passes: 38 },
+  { id: 9, name: "LW", x: 440, y: 340, passes: 30 }, { id: 10, name: "AM", x: 460, y: 220, passes: 34 },
+  { id: 11, name: "Sherif", x: 570, y: 220, passes: 24 },
+];
+export const LINKS_HOME = [[1,2,18],[1,3,15],[2,4,14],[2,6,12],[3,5,10],[3,7,11],[4,8,9],[5,9,8],[6,7,16],[6,10,13],[7,10,11],[8,10,8],[10,11,14],[9,11,6],[6,11,7]];
+export const NET_AWAY = [
+  { id: 1, name: "GK", x: 615, y: 220, passes: 32 }, { id: 2, name: "Abdelshafy", x: 530, y: 140, passes: 35 },
+  { id: 3, name: "CB", x: 530, y: 300, passes: 38 }, { id: 4, name: "LB", x: 450, y: 80, passes: 28 },
+  { id: 5, name: "RB", x: 450, y: 360, passes: 30 }, { id: 6, name: "El Said", x: 370, y: 200, passes: 44 },
+  { id: 7, name: "CM", x: 370, y: 280, passes: 38 }, { id: 8, name: "Sharabini", x: 240, y: 100, passes: 22 },
+  { id: 9, name: "Emam", x: 240, y: 340, passes: 31 }, { id: 10, name: "AM", x: 220, y: 220, passes: 26 },
+  { id: 11, name: "Kahraba", x: 110, y: 220, passes: 18 },
+];
+export const LINKS_AWAY = [[1,2,14],[1,3,12],[2,4,10],[2,6,9],[3,5,8],[3,7,10],[4,8,7],[5,9,8],[6,7,14],[6,10,10],[7,10,9],[8,10,6],[10,11,8],[9,11,5],[6,11,4]];
+export const EVENTS = [
+  { id: 1, sec: 420, min: "7'", type: "shot", team: "home", player: "M. Sherif", detail: "Left foot · Center" },
+  { id: 25, sec: 540, min: "9'", type: "tackle", team: "away", player: "M. Abdelshafy", detail: "Won duel" },
+  { id: 2, sec: 780, min: "13'", type: "shot", team: "away", player: "A. Kahraba", detail: "Header · Box" },
+  { id: 26, sec: 840, min: "14'", type: "save", team: "home", player: "Al Ahly GK", detail: "Low save" },
+  { id: 15, sec: 960, min: "16'", type: "foul", team: "home", player: "Y. Ibrahim", detail: "Late challenge" },
+  { id: 27, sec: 1080, min: "18'", type: "interception", team: "home", player: "A. Dieng", detail: "Central lane" },
+  { id: 3, sec: 1260, min: "21'", type: "card", team: "away", player: "O. El Said", detail: "Yellow · Tactical foul" },
+  { id: 28, sec: 1320, min: "22'", type: "cross", team: "home", player: "H. El Shahat", detail: "Right wing" },
+  { id: 16, sec: 1440, min: "24'", type: "shot", team: "home", player: "H. El Shahat", detail: "Right foot · Blocked" },
+  { id: 29, sec: 1560, min: "26'", type: "block", team: "away", player: "O. El Said", detail: "Shot block" },
+  { id: 4, sec: 1740, min: "29'", type: "corner", team: "home", player: "H. El Shahat", detail: "Right side" },
+  { id: 17, sec: 1920, min: "32'", type: "foul", team: "away", player: "M. Abdelshafy", detail: "Holding" },
+  { id: 30, sec: 2040, min: "34'", type: "offside", team: "home", player: "M. Sherif", detail: "Early run" },
+  { id: 5, sec: 2160, min: "36'", type: "goal", team: "home", player: "M. Sherif", detail: "Right foot · Top corner" },
+  { id: 18, sec: 2340, min: "39'", type: "corner", team: "away", player: "Z. Emam", detail: "Left side" },
+  { id: 31, sec: 2460, min: "41'", type: "clearance", team: "home", player: "O. Kamal", detail: "Box clearance" },
+  { id: 6, sec: 2580, min: "43'", type: "shot", team: "away", player: "Z. Emam", detail: "Left foot · Distance" },
+  { id: 7, sec: 3060, min: "51'", type: "sub", team: "neutral", player: "A. Dieng → T. Salah", detail: "" },
+  { id: 32, sec: 3180, min: "53'", type: "tackle", team: "home", player: "Y. Ibrahim", detail: "Recovery tackle" },
+  { id: 19, sec: 3240, min: "54'", type: "shot", team: "home", player: "O. Kamal", detail: "Header · Wide" },
+  { id: 8, sec: 3480, min: "58'", type: "goal", team: "home", player: "H. El Shahat", detail: "Header · Cross" },
+  { id: 33, sec: 3600, min: "60'", type: "save", team: "away", player: "Zamalek GK", detail: "Close-range stop" },
+  { id: 9, sec: 3780, min: "63'", type: "goal", team: "away", player: "A. Kahraba", detail: "Penalty kick" },
+  { id: 20, sec: 3960, min: "66'", type: "shot", team: "away", player: "S. Mustafa", detail: "Volley · Saved" },
+  { id: 34, sec: 4080, min: "68'", type: "cross", team: "away", player: "W. Sharabini", detail: "Far post" },
+  { id: 10, sec: 4260, min: "71'", type: "card", team: "away", player: "M. Abdelshafy", detail: "Red · 2nd Yellow" },
+  { id: 21, sec: 4380, min: "73'", type: "foul", team: "away", player: "W. Sharabini", detail: "Trip" },
+  { id: 11, sec: 4500, min: "75'", type: "corner", team: "away", player: "W. Sharabini", detail: "Left side" },
+  { id: 35, sec: 4680, min: "78'", type: "interception", team: "away", player: "O. El Said", detail: "Midfield regain" },
+  { id: 22, sec: 4800, min: "80'", type: "shot", team: "home", player: "M. Sherif", detail: "Header · Saved" },
+  { id: 36, sec: 4920, min: "82'", type: "clearance", team: "away", player: "M. Abdelshafy", detail: "Goal-mouth clearance" },
+  { id: 12, sec: 5100, min: "85'", type: "shot", team: "home", player: "M. Sherif", detail: "Right foot · Saved" },
+  { id: 23, sec: 5220, min: "87'", type: "corner", team: "home", player: "H. El Shahat", detail: "Short corner" },
+  { id: 37, sec: 5280, min: "88'", type: "block", team: "home", player: "O. Kamal", detail: "Penalty area block" },
+  { id: 13, sec: 5400, min: "90'", type: "card", team: "away", player: "W. Sharabini", detail: "Yellow · Time wasting" },
+  { id: 14, sec: 5550, min: "92'", type: "foul", team: "home", player: "O. Kamal", detail: "Reckless challenge" },
+  { id: 24, sec: 5620, min: "93'", type: "shot", team: "away", player: "A. Kahraba", detail: "Header · Over" },
+];
+export const PERIODS = ["0-15'", "15-30'", "30-45'", "45-60'", "60-75'", "75-90'"];
