@@ -1,5 +1,23 @@
 import React from 'react';
+import { Loader2 } from 'lucide-react';
 import { C, HOME, AWAY } from '../../constants/theme';
+
+export function AnalysingSkeleton({ label = "Analysing data…", sub = "Detecting events, players and stats", bars = 5 }) {
+  return (
+    <div className="analysing-skel">
+      <div className="as-head">
+        <Loader2 size={22} className="spin" style={{ color: C.green }} />
+        <div className="as-label">{label}</div>
+        {sub && <div className="as-sub">{sub}</div>}
+      </div>
+      <div className="as-bars">
+        {Array.from({ length: bars }).map((_, i) => (
+          <div key={i} className="as-bar" style={{ width: `${50 + ((i * 37) % 50)}%` }} />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 /* Panel + stat card */
 export function Panel({ title, legend, children }) {

@@ -1,16 +1,87 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Activity, Crosshair, Download, FileText, Pause, Play, Plus, Share2, SkipBack, SkipForward, Target, Users } from 'lucide-react';
+import { Activity, Crosshair, Download, FileText, Link2, Loader2, MessageSquare, Pause, Play, Plus, Repeat, Send, Share2, SkipBack, SkipForward, Sparkles, Target, Upload, Users } from 'lucide-react';
 import { C, HOME, AWAY } from '../constants/theme';
-import { EVENTS } from '../data/mockData';
-import { Leg } from '../components/ui/Panel';
+import { EVENTS, ROSTER_HOME, ROSTER_AWAY } from '../data/mockData';
+import { AnalysingSkeleton, Leg } from '../components/ui/Panel';
 import { Pitch } from '../components/pitch/Pitch';
 
 /* Video tab */
+const DAILYMOTION_SRC = "https://geo.dailymotion.com/player.html?video=xaajou0";
 const TOTAL = 5647;
 const fmt = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 const teamColor = (t) => t === "home" ? HOME : t === "away" ? AWAY : C.softBlue;
 const TIMELINE_TYPES = ["goal", "shot", "save", "card", "corner", "foul", "sub", "offside", "tackle", "interception", "clearance", "cross", "block"];
-export function VideoTab({ toast }) {
+
+const playerPos = (p, sec) => {
+  const phase = p.num * 1.31 + (p.team === "away" ? 2.15 : 0);
+  const dx = Math.sin(sec * 0.045 + phase) * 22 + Math.cos(sec * 0.018 + phase) * 6;
+  const dy = Math.cos(sec * 0.032 + phase * 0.7) * 16 + Math.sin(sec * 0.022 + phase) * 5;
+  return { x: p.x + dx, y: p.y + dy };
+};
+const ballPos = (sec) => ({
+  x: 340 + Math.sin(sec * 0.038) * 210 + Math.cos(sec * 0.021) * 30,
+  y: 220 + Math.cos(sec * 0.026) * 115 + Math.sin(sec * 0.046) * 22,
+});
+const ALL_PLAYERS = [
+  ...ROSTER_HOME.map((p) => ({ ...p, team: "home" })),
+  ...ROSTER_AWAY.map((p) => ({ ...p, team: "away" })),
+];
+
+/* Live Commentary — showcase data so the panel feels alive on first load. */
+const INITIAL_CHAT = [
+  { id: 1, role: "system", text: "Live commentary mode — type what you see. Events are detected from your message." },
+  { id: 2, role: "user", min: "12'", text: "Salah picks the ball up in midfield, switches it diagonally to El Shahat on the right" },
+  { id: 3, role: "ai",   min: "12'", detected: { type: "cross", team: "home", player: "T. Salah", detail: "Diagonal switch → El Shahat" } },
+  { id: 4, role: "user", min: "24'", text: "Mostafa whips in a great cross, Sherif's header is caught by the keeper!" },
+  { id: 5, role: "ai",   min: "24'", detected: { type: "save", team: "away", player: "Zamalek GK", detail: "Header by M. Sherif · Comfortable catch" } },
+  { id: 6, role: "user", min: "37'", text: "GOOOAAAL!! Mohamed Sherif fires it into the top corner from the edge of the box!!" },
+  { id: 7, role: "ai",   min: "37'", detected: { type: "goal", team: "home", player: "M. Sherif", detail: "Right foot · Top-right corner · 18 yards" } },
+  { id: 8, role: "user", min: "44'", text: "Sasi pulls down Hany near the touchline, that has to be a yellow" },
+  { id: 9, role: "ai",   min: "44'", detected: { type: "card", team: "away", player: "F. Sasi", detail: "Yellow · Foul on M. Hany" } },
+  { id: 10, role: "user", min: "58'", text: "Corner for Al Ahly, Mostafa swings it in from the left" },
+  { id: 11, role: "ai",  min: "58'", detected: { type: "corner", team: "home", player: "O. Mostafa", detail: "Inswinger from the left" } },
+  { id: 12, role: "user", min: "67'", text: "Kahraba breaks through but flagged offside again — third time tonight" },
+  { id: 13, role: "ai",  min: "67'", detected: { type: "offside", team: "away", player: "A. Kahraba", detail: "Caught a yard behind the line" } },
+];
+
+const detectFromText = (text) => {
+  const t = text.toLowerCase();
+  const sideHome = /(ahly|sherif|salah|mostafa|el shahat|fathy|hany|dieng|kamal|ibrahim)/i.test(text);
+  const sideAway = /(zamalek|sasi|kahraba|sharabini|emam|el said|magdy|abdelmonem|fawzi|abdelshafy)/i.test(text);
+  const team = sideAway && !sideHome ? "away" : "home";
+  if (/(goooal|gooal|goal|scor|finish|nets|net it|back of the net)/i.test(t))
+    return { type: "goal", team, player: team === "home" ? "M. Sherif" : "A. Kahraba", detail: "Open play · Right foot" };
+  if (/red card|sent off/i.test(t))
+    return { type: "card", team, player: team === "home" ? "A. Hany" : "M. Abdelmonem", detail: "Red card · Serious foul play" };
+  if (/(yellow|book|caution|card)/i.test(t))
+    return { type: "card", team, player: team === "home" ? "A. Dieng" : "F. Sasi", detail: "Yellow · Tactical foul" };
+  if (/corner|flag-kick|set piece/i.test(t))
+    return { type: "corner", team, player: team === "home" ? "O. Mostafa" : "W. Sharabini", detail: "Whipped delivery" };
+  if (/save|denied|keeper|stopped|reflex|tipped/i.test(t))
+    return { type: "save", team: team === "home" ? "away" : "home", player: team === "home" ? "Zamalek GK" : "Al Ahly GK", detail: "Reflex save · Low" };
+  if (/foul|tackle|trip|brought down/i.test(t))
+    return { type: "foul", team, player: team === "home" ? "A. Dieng" : "O. El Said", detail: "Late challenge" };
+  if (/offside|flagged/i.test(t))
+    return { type: "offside", team, player: team === "home" ? "H. El Shahat" : "A. Kahraba", detail: "Caught behind the line" };
+  if (/cross|whip|delivery|swung in/i.test(t))
+    return { type: "cross", team, player: team === "home" ? "O. Mostafa" : "K. Fawzi", detail: "From the flank" };
+  if (/interception|read it|cut out/i.test(t))
+    return { type: "interception", team, player: team === "home" ? "O. Kamal" : "M. Abdelshafy", detail: "Read the pass" };
+  if (/clearance|cleared|hoof/i.test(t))
+    return { type: "clearance", team, player: team === "home" ? "A. Hany" : "M. Abdelmonem", detail: "Defensive clearance" };
+  if (/block|charged down/i.test(t))
+    return { type: "block", team, player: team === "home" ? "Y. Ibrahim" : "H. Magdy", detail: "Body in the way" };
+  if (/sub|on for|comes on|comes off|replac/i.test(t))
+    return { type: "sub", team, player: team === "home" ? "K. Fathy" : "S. Mustafa", detail: "Tactical change" };
+  if (/shot|effort|strike|drive/i.test(t))
+    return { type: "shot", team, player: team === "home" ? "T. Salah" : "Z. Emam", detail: "Long-range effort" };
+  return { type: "shot", team, player: team === "home" ? "K. Fathy" : "F. Sasi", detail: "Half-chance" };
+};
+export function VideoTab({ toast, match, onUpload }) {
+  const hasVideo = match?.hasVideo !== false;
+  const analysing = match?.analysing === true;
+  const [viewMode, setViewMode] = useState("video");
+  const iframeRef = useRef(null);
   const [sec, setSec] = useState(2160);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
@@ -23,7 +94,97 @@ export function VideoTab({ toast }) {
   const [active, setActive] = useState(5);
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({ min: "", team: "home", type: "shot", player: "", detail: "" });
+  const [uploadStep, setUploadStep] = useState("cta");
+  const [urlInput, setUrlInput] = useState("");
+  const [videoStart, setVideoStart] = useState(0);
   const timer = useRef(null);
+  const uploadTimer = useRef(null);
+
+  useEffect(() => () => clearTimeout(uploadTimer.current), []);
+
+  const submitUrl = () => {
+    if (!urlInput.trim()) return;
+    setUploadStep("uploading");
+    uploadTimer.current = setTimeout(() => {
+      onUpload && onUpload();
+      setUploadStep("cta");
+      setUrlInput("");
+    }, 5000);
+  };
+
+  const pickEvent = (ev) => {
+    if (viewMode === "video") {
+      const r = Math.floor(Math.random() * TOTAL);
+      setSec(r);
+      setVideoStart(r);
+    } else {
+      setSec(Math.max(0, Math.min(TOTAL, ev.sec)));
+    }
+    setActive(ev.id);
+  };
+
+  const sendDmCommand = (command, parameters) => {
+    if (!iframeRef.current?.contentWindow) return;
+    try {
+      iframeRef.current.contentWindow.postMessage(
+        JSON.stringify(parameters !== undefined ? { command, parameters } : { command }),
+        "*"
+      );
+    } catch {}
+  };
+
+  const seekBy = (delta) => {
+    const next = Math.max(0, Math.min(TOTAL, sec + delta));
+    setSec(next);
+    if (viewMode === "video") {
+      setVideoStart(next);
+      sendDmCommand("seek", [next]);
+    }
+  };
+
+  const togglePlayCmd = () => {
+    const next = !playing;
+    setPlaying(next);
+    if (viewMode === "video") sendDmCommand(next ? "play" : "pause");
+  };
+
+  const [panelTab, setPanelTab] = useState("events");
+  const [chat, setChat] = useState(INITIAL_CHAT);
+  const [chatInput, setChatInput] = useState("");
+  const chatRef = useRef(null);
+
+  useEffect(() => {
+    if (panelTab === "commentary" && chatRef.current) {
+      chatRef.current.scrollTop = chatRef.current.scrollHeight;
+    }
+  }, [chat, panelTab]);
+
+  const sendChat = () => {
+    const text = chatInput.trim();
+    if (!text) return;
+    const min = Math.floor(sec / 60) + "'";
+    const baseId = Date.now();
+    const userMsg = { id: baseId, role: "user", min, text };
+    const aiMsg = { id: baseId + 1, role: "ai", min, pending: true };
+    setChat((c) => [...c, userMsg, aiMsg]);
+    setChatInput("");
+    setTimeout(() => {
+      const detected = detectFromText(text);
+      setChat((c) => c.map((m) => m.id === baseId + 1 ? { ...m, pending: false, detected } : m));
+    }, 1100);
+  };
+
+  const saveDetected = (detected, min) => {
+    const m = parseInt(min) || Math.floor(sec / 60);
+    const id = Date.now();
+    setEvents((prev) => [...prev, {
+      id, sec: m * 60, min: m + "'",
+      type: detected.type, team: detected.team,
+      player: detected.player, detail: detected.detail || "",
+    }].sort((a, b) => a.sec - b.sec));
+    setActive(id);
+    toast(`Saved: ${detected.type} at ${m}'`);
+  };
 
   useEffect(() => {
     if (playing) {
@@ -75,25 +236,135 @@ export function VideoTab({ toast }) {
     setTimelineTypes((prev) => prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]);
   };
 
+  const homeLabel = match?.home === false ? match?.opponent || "Al Ahly" : "Al Ahly";
+  const awayLabel = match?.home === false ? "Al Ahly" : match?.opponent || "Zamalek";
+
+  if (!hasVideo) {
+    return (
+      <div className="workspace empty-workspace">
+        <div className="video-wrap">
+          <div className="video-area upload-area">
+            {uploadStep === "cta" && (
+              <div className="upload-cta">
+                <div className="upload-icon"><Upload size={32} /></div>
+                <div className="upload-title">Upload Match Video</div>
+                <div className="upload-sub">
+                  Add a recording to start analysing<br />
+                  <b>Al Ahly vs {match?.opponent || "your opponent"}</b>
+                </div>
+                <button className="btn-primary upload-btn" onClick={() => setUploadStep("url")}>
+                  <Upload size={13} /> Upload Video
+                </button>
+                <div className="upload-hint">MP4, MOV or paste a Dailymotion / YouTube link</div>
+              </div>
+            )}
+
+            {uploadStep === "url" && (
+              <div className="upload-cta">
+                <div className="upload-icon"><Link2 size={30} /></div>
+                <div className="upload-title">Paste Video URL</div>
+                <div className="upload-sub">Any URL works — this is a demo upload.</div>
+                <div className="url-input-row">
+                  <input
+                    className="form-input"
+                    type="text"
+                    placeholder="https://dailymotion.com/video/..."
+                    value={urlInput}
+                    onChange={(e) => setUrlInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") submitUrl(); }}
+                    autoFocus
+                  />
+                  <button
+                    className="btn-primary"
+                    onClick={submitUrl}
+                    disabled={!urlInput.trim()}
+                    style={!urlInput.trim() ? { opacity: 0.45, cursor: "not-allowed" } : {}}
+                  >Upload</button>
+                </div>
+                <button className="upload-cancel" onClick={() => { setUploadStep("cta"); setUrlInput(""); }}>
+                  Cancel
+                </button>
+              </div>
+            )}
+
+            {uploadStep === "uploading" && (
+              <div className="upload-cta">
+                <Loader2 size={42} className="spin" style={{ color: C.green }} />
+                <div className="upload-title" style={{ marginTop: ".4rem" }}>Uploading video…</div>
+                <div className="upload-sub">Preparing your match for analysis</div>
+                <div className="upload-progress"><div className="upload-progress-fill" /></div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="workspace">
       <div className="left-col">
         <div className="video-wrap">
-          <div className="video-area" onClick={() => setPlaying((p) => !p)}>
-            <Pitch vb="0 0 800 450" />
-            <div className="playhead-ball" style={{
-              left: 30 + Math.abs(Math.sin(sec * .04) * 40) + "%",
-              top: 30 + Math.abs(Math.cos(sec * .028) * 40) + "%",
-            }} />
-            {!playing && (
-              <div className="play-overlay">
-                <div className="play-btn-big"><Play size={22} fill={C.green} stroke="none" /></div>
+          <div className="video-area" onClick={viewMode === "pitch" ? () => setPlaying((p) => !p) : undefined}>
+            {viewMode === "video" ? (
+              <div className="dm-embed">
+                <iframe
+                  ref={iframeRef}
+                  key={videoStart}
+                  src={videoStart > 0
+                    ? `${DAILYMOTION_SRC}&start=${videoStart}&autoplay=1`
+                    : `${DAILYMOTION_SRC}&autoplay=1`}
+                  title="Dailymotion Video Player"
+                  allow="web-share; autoplay"
+                  allowFullScreen
+                />
               </div>
+            ) : (
+              <>
+                <Pitch vb="0 0 680 440">
+                  {ALL_PLAYERS.map((p) => {
+                    const pos = playerPos(p, sec);
+                    const color = teamColor(p.team);
+                    return (
+                      <g key={`${p.team}-${p.num}`} style={{ pointerEvents: "none" }}>
+                        <circle cx={pos.x} cy={pos.y} r={11}
+                          fill={color} stroke="rgba(0,0,0,0.55)" strokeWidth="1" />
+                        <text x={pos.x} y={pos.y + 3.6} textAnchor="middle"
+                          fontSize="10.5" fontFamily="Syne" fontWeight="700"
+                          fill={p.team === "home" ? "#0d2b1a" : "#fff"}>
+                          {p.num}
+                        </text>
+                      </g>
+                    );
+                  })}
+                  {(() => {
+                    const bp = ballPos(sec);
+                    return (
+                      <g style={{ pointerEvents: "none" }}>
+                        <ellipse cx={bp.x} cy={bp.y + 4} rx="5.5" ry="1.6" fill="rgba(0,0,0,0.45)" />
+                        <circle cx={bp.x} cy={bp.y} r="9" fill="#fff" opacity="0.14" />
+                        <circle cx={bp.x} cy={bp.y} r="5" fill="#fff" stroke="rgba(0,0,0,0.55)" strokeWidth="0.7" />
+                        <circle cx={bp.x - 1.1} cy={bp.y - 1.1} r="1.6" fill="#0d2b1a" opacity="0.55" />
+                      </g>
+                    );
+                  })()}
+                </Pitch>
+                {!playing && (
+                  <div className="play-overlay">
+                    <div className="play-btn-big"><Play size={22} fill={C.green} stroke="none" /></div>
+                  </div>
+                )}
+              </>
             )}
+            <button className="view-toggle"
+              onClick={(e) => { e.stopPropagation(); setViewMode((v) => v === "video" ? "pitch" : "video"); }}
+              title="Switch view">
+              <Repeat size={11} /> {viewMode === "video" ? "Pitch View" : "Video View"}
+            </button>
             <div className="video-badge-tl">
-              <span className="dot" style={{ background: HOME }} /> Al Ahly
+              <span className="dot" style={{ background: HOME }} /> {homeLabel}
               <span style={{ color: C.muted2, padding: "0 .3rem" }}>vs</span>
-              <span className="dot" style={{ background: AWAY }} /> Zamalek
+              <span className="dot" style={{ background: AWAY }} /> {awayLabel}
             </div>
             <div className="video-time">{fmt(sec)} / 94:07</div>
           </div>
@@ -111,8 +382,8 @@ export function VideoTab({ toast }) {
                 <div className="scrubber-progress" style={{ width: sec / TOTAL * 100 + "%" }}>
                   <div className="scrubber-thumb" />
                 </div>
-                {events.map((ev) => (
-                  <div key={ev.id} title={`${ev.min} ${ev.player}`} onClick={(e) => { e.stopPropagation(); seek(ev.sec); setActive(ev.id); }}
+                {!analysing && events.map((ev) => (
+                  <div key={ev.id} title={`${ev.min} ${ev.player}`} onClick={(e) => { e.stopPropagation(); pickEvent(ev); }}
                     className="s-marker" style={{ left: ev.sec / TOTAL * 100 + "%", background: teamColor(ev.team), boxShadow: `0 0 5px ${teamColor(ev.team)}` }} />
                 ))}
               </div>
@@ -126,11 +397,16 @@ export function VideoTab({ toast }) {
           </div>
         </div>
 
+        {analysing ? (
+          <div className="timeline-wrap">
+            <AnalysingSkeleton label="Building match timeline…" sub="Detecting events and key moments" bars={4} />
+          </div>
+        ) : (
         <div className="timeline-wrap">
           <div className="tl-hdr">
             <div className="pnl-t">Match Timeline</div>
             <div className="tl-hdr-r">
-              <div className="lgnd"><Leg c={HOME} t="Al Ahly" /><Leg c={AWAY} t="Zamalek" /><Leg c={C.softBlue} t="Neutral" /></div>
+              <div className="lgnd"><Leg c={HOME} t={homeLabel} /><Leg c={AWAY} t={awayLabel} /><Leg c={C.softBlue} t="Neutral" /></div>
               <button className="tl-toggle" onClick={() => setShowTimelineFilters((v) => !v)}>{showTimelineFilters ? "Hide Filters" : "Show Filters"}</button>
             </div>
           </div>
@@ -138,7 +414,7 @@ export function VideoTab({ toast }) {
             <div className="timeline-filter">
               <div className="tl-filter-row">
                 <span className="tl-filter-lbl">Team</span>
-                {[["all", "All"], ["home", "Al Ahly"], ["away", "Zamalek"], ["neutral", "Neutral"]].map(([k, l]) => (
+                {[["all", "All"], ["home", homeLabel], ["away", awayLabel], ["neutral", "Neutral"]].map(([k, l]) => (
                   <button key={k} className={"tl-chip" + (timelineTeam === k ? " active" : "")} onClick={() => setTimelineTeam(k)}>{l}</button>
                 ))}
               </div>
@@ -160,7 +436,7 @@ export function VideoTab({ toast }) {
                 <div className="trow-track">
                   {evs.map((ev) => (
                     <div key={ev.id} className="trow-m" title={`${ev.min} ${ev.player}`}
-                      onClick={() => { seek(ev.sec); setActive(ev.id); }}
+                      onClick={() => pickEvent(ev)}
                       style={{ left: ev.sec / TOTAL * 100 + "%", background: teamColor(ev.team), cursor: "pointer" }} />
                   ))}
                 </div>
@@ -169,69 +445,150 @@ export function VideoTab({ toast }) {
           })}
           <div className="time-axis">{["0'", "15'", "30'", "HT", "60'", "75'", "90'"].map((t) => <span key={t} className="time-tick">{t}</span>)}</div>
         </div>
+        )}
 
-        <div className="stats-strip">
-          {stats.map((s) => (
-            <div className="stat-card" key={s.l}>
-              <div className="stat-val" style={{ color: s.c || C.white }}>{s.v}</div>
-              <div className="stat-lbl">{s.l}</div>
-              <div className="stat-sub">
-                <span className="stat-team"><span className="std" style={{ background: HOME }} />{s.h}</span>
-                <span className="stat-team"><span className="std" style={{ background: AWAY }} />{s.a}</span>
+        {!analysing && (
+          <div className="stats-strip">
+            {stats.map((s) => (
+              <div className="stat-card" key={s.l}>
+                <div className="stat-val" style={{ color: s.c || C.white }}>{s.v}</div>
+                <div className="stat-lbl">{s.l}</div>
+                <div className="stat-sub">
+                  <span className="stat-team"><span className="std" style={{ background: HOME }} />{s.h}</span>
+                  <span className="stat-team"><span className="std" style={{ background: AWAY }} />{s.a}</span>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="events-panel">
-        <div className="ep-top">
-          <div className="ep-title-row">
-            <div className="ep-title">Events</div>
-            <div className="ev-count">{filtered.length} event{filtered.length !== 1 ? "s" : ""}</div>
-          </div>
-          <div className="team-tabs">
-            {[["all", "All"], ["home", "Al Ahly"], ["away", "Zamalek"]].map(([k, l]) => (
-              <button key={k} onClick={() => setTeamF(k)}
-                className={"team-tab" + (teamF === k ? (k === "all" ? " t-all" : k === "home" ? " t-home" : " t-away") : "")}>{l}</button>
-            ))}
-          </div>
-          <div className="filter-bar">
-            {FILTERS.map(([k, l]) => (
-              <button key={k} className={"chip" + (typeF === k ? " active" : "")} onClick={() => setTypeF(k)}>{l}</button>
-            ))}
-          </div>
+        <div className="panel-subtabs">
+          <button className={"panel-subtab" + (panelTab === "events" ? " on" : "")}
+            onClick={() => setPanelTab("events")}>
+            <Activity size={11} /> Events
+          </button>
+          <button className={"panel-subtab" + (panelTab === "commentary" ? " on" : "")}
+            onClick={() => setPanelTab("commentary")}>
+            <MessageSquare size={11} /> Live Commentary
+          </button>
         </div>
-        <div className="events-list">
-          {filtered.length === 0 && <div className="no-events"><p>No events found</p><span>Try changing the filters</span></div>}
-          {["1st Half", "2nd Half"].map((half, hi) => {
-            const evs = filtered.filter((e) => hi === 0 ? e.sec <= 2700 : e.sec > 2700);
-            if (!evs.length) return null;
-            return (
-              <div key={half}>
-                <div className="half-sep"><div className="half-line" /><div className="half-lbl">{half}</div><div className="half-line" /></div>
-                {evs.map((ev) => (
-                  <div key={ev.id} className={"ev-row" + (active === ev.id ? " ev-active" : "")} onClick={() => { seek(ev.sec); setActive(ev.id); }}>
-                    <div className="ev-time" style={{ color: teamColor(ev.team) }}>{ev.min}</div>
-                    <div className="ev-icon" style={{ background: `${teamColor(ev.team)}1a`, color: teamColor(ev.team) }}>
-                      {ev.type === "goal" ? <Target size={14} /> : ev.type === "card" ? <span style={{ width: 8, height: 12, borderRadius: 2, background: ev.detail.startsWith("Red") ? C.softBlue : C.amber, display: "block" }} /> : ev.type === "corner" ? <Crosshair size={14} /> : ev.type === "sub" ? <Users size={14} /> : <Activity size={14} />}
-                    </div>
-                    <div className="ev-info">
-                      <div className="ev-type" style={ev.type === "goal" ? { color: teamColor(ev.team) } : {}}>
-                        {ev.type === "goal" ? <b>GOAL</b> : ev.type === "card" ? "Card" : ev.type.charAt(0).toUpperCase() + ev.type.slice(1)}
-                        <span className={"ev-tag " + (ev.team === "neutral" ? "neutral" : ev.team)}>{ev.team === "neutral" ? "Neutral" : ev.team === "home" ? "Home" : "Away"}</span>
-                      </div>
-                      {ev.player && <div className="ev-player">{ev.player}{ev.detail ? " · " + ev.detail : ""}</div>}
-                    </div>
-                  </div>
+
+        {panelTab === "events" ? (
+          analysing ? (
+            <AnalysingSkeleton label="Detecting events…" sub="Goals, cards, shots and more" bars={5} />
+          ) : (
+          <>
+            <div className="ep-top">
+              <div className="ep-title-row">
+                <div className="ep-title">Events</div>
+                <div className="ev-count">{filtered.length} event{filtered.length !== 1 ? "s" : ""}</div>
+              </div>
+              <div className="team-tabs">
+                {[["all", "All"], ["home", homeLabel], ["away", awayLabel]].map(([k, l]) => (
+                  <button key={k} onClick={() => setTeamF(k)}
+                    className={"team-tab" + (teamF === k ? (k === "all" ? " t-all" : k === "home" ? " t-home" : " t-away") : "")}>{l}</button>
                 ))}
               </div>
-            );
-          })}
-        </div>
-        <button className="add-ev-btn" onClick={() => { setForm((f) => ({ ...f, min: Math.floor(sec / 60) })); setModal(true); }}>
-          <Plus size={12} /> Add event at current time
-        </button>
+              <div className="filter-bar">
+                {FILTERS.map(([k, l]) => (
+                  <button key={k} className={"chip" + (typeF === k ? " active" : "")} onClick={() => setTypeF(k)}>{l}</button>
+                ))}
+              </div>
+            </div>
+            <div className="events-list">
+              {filtered.length === 0 && <div className="no-events"><p>No events found</p><span>Try changing the filters</span></div>}
+              {["1st Half", "2nd Half"].map((half, hi) => {
+                const evs = filtered.filter((e) => hi === 0 ? e.sec <= 2700 : e.sec > 2700);
+                if (!evs.length) return null;
+                return (
+                  <div key={half}>
+                    <div className="half-sep"><div className="half-line" /><div className="half-lbl">{half}</div><div className="half-line" /></div>
+                    {evs.map((ev) => (
+                      <div key={ev.id} className={"ev-row" + (active === ev.id ? " ev-active" : "")} onClick={() => pickEvent(ev)}>
+                        <div className="ev-time" style={{ color: teamColor(ev.team) }}>{ev.min}</div>
+                        <div className="ev-icon" style={{ background: `${teamColor(ev.team)}1a`, color: teamColor(ev.team) }}>
+                          {ev.type === "goal" ? <Target size={14} /> : ev.type === "card" ? <span style={{ width: 8, height: 12, borderRadius: 2, background: ev.detail.startsWith("Red") ? C.softBlue : C.amber, display: "block" }} /> : ev.type === "corner" ? <Crosshair size={14} /> : ev.type === "sub" ? <Users size={14} /> : <Activity size={14} />}
+                        </div>
+                        <div className="ev-info">
+                          <div className="ev-type" style={ev.type === "goal" ? { color: teamColor(ev.team) } : {}}>
+                            {ev.type === "goal" ? <b>GOAL</b> : ev.type === "card" ? "Card" : ev.type.charAt(0).toUpperCase() + ev.type.slice(1)}
+                            <span className={"ev-tag " + (ev.team === "neutral" ? "neutral" : ev.team)}>{ev.team === "neutral" ? "Neutral" : ev.team === "home" ? "Home" : "Away"}</span>
+                          </div>
+                          {ev.player && <div className="ev-player">{ev.player}{ev.detail ? " · " + ev.detail : ""}</div>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+            <button className="add-ev-btn" onClick={() => { setForm((f) => ({ ...f, min: Math.floor(sec / 60) })); setModal(true); }}>
+              <Plus size={12} /> Add event at current time
+            </button>
+          </>
+          )
+        ) : (
+          <div className="commentary">
+            <div className="comm-hint">
+              <Sparkles size={11} /> AI reads your commentary and turns it into events.
+            </div>
+            <div className="chat-stream" ref={chatRef}>
+              {chat.map((m) => {
+                if (m.role === "system") {
+                  return <div key={m.id} className="chat-msg system">{m.text}</div>;
+                }
+                if (m.role === "user") {
+                  return (
+                    <div key={m.id} className="chat-msg user">
+                      <div className="chat-min">You · {m.min}</div>
+                      <div className="chat-bubble">{m.text}</div>
+                    </div>
+                  );
+                }
+                return (
+                  <div key={m.id} className="chat-msg ai">
+                    <div className="chat-min">Scout AI · {m.min}</div>
+                    <div className="chat-bubble">
+                      <div className="ai-icon"><Sparkles size={12} /></div>
+                      {m.pending ? (
+                        <span className="chat-pending">Reading commentary…</span>
+                      ) : (
+                        <DetectedCard d={m.detected} min={m.min} onSave={saveDetected} />
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="chat-controls">
+              <button className="chat-ctrl" onClick={() => seekBy(-5)} title="Back 5 seconds">
+                <SkipBack size={13} /><span>5s</span>
+              </button>
+              <button className={"chat-ctrl primary" + (playing ? " on" : "")} onClick={togglePlayCmd} title={playing ? "Pause" : "Play"}>
+                {playing ? <Pause size={14} fill="currentColor" stroke="none" /> : <Play size={14} fill="currentColor" stroke="none" />}
+              </button>
+              <button className="chat-ctrl" onClick={() => seekBy(5)} title="Forward 5 seconds">
+                <span>5s</span><SkipForward size={13} />
+              </button>
+              <div className="chat-time"><strong>{fmt(sec)}</strong> / 94:07</div>
+            </div>
+            <div className="chat-input-row">
+              <input
+                className="chat-input"
+                placeholder="Type what you see… (e.g. 'Sherif scores from 20 yards')"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") sendChat(); }}
+              />
+              <button className="chat-send" onClick={sendChat} disabled={!chatInput.trim()} title="Send">
+                <Send size={14} />
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="ep-foot">
           <button className="btn-export" onClick={() => toast("Exporting CSV…")}><Download size={12} /> CSV</button>
           <button className="btn-export" onClick={() => toast("Exporting PDF…")}><FileText size={12} /> PDF</button>
@@ -249,7 +606,7 @@ export function VideoTab({ toast }) {
                 <input className="form-input" type="number" value={form.min} onChange={(e) => setForm({ ...form, min: e.target.value })} placeholder="34" /></div>
               <div className="form-group"><label className="form-lbl">Team</label>
                 <select className="form-input" value={form.team} onChange={(e) => setForm({ ...form, team: e.target.value })}>
-                  <option value="home">Al Ahly (Home)</option><option value="away">Zamalek (Away)</option><option value="neutral">Neutral</option>
+                  <option value="home">{homeLabel} (Home)</option><option value="away">{awayLabel} (Away)</option><option value="neutral">Neutral</option>
                 </select></div>
             </div>
             <div className="form-group"><label className="form-lbl">Event Type</label>
@@ -267,6 +624,29 @@ export function VideoTab({ toast }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function DetectedCard({ d, min, onSave }) {
+  if (!d) return null;
+  const color = d.team === "home" ? HOME : d.team === "away" ? AWAY : C.softBlue;
+  const teamLabel = d.team === "home" ? "Home" : d.team === "away" ? "Away" : "Neutral";
+  return (
+    <div className="detected">
+      <div className="detected-head">
+        <span className="detected-type" style={{ color }}>
+          ✓ {d.type.toUpperCase()}
+        </span>
+        <span className="detected-tag" style={{ background: `${color}22`, color }}>{teamLabel}</span>
+      </div>
+      <div className="detected-player">{d.player}</div>
+      {d.detail && <div className="detected-detail">{d.detail}</div>}
+      <div className="detected-actions">
+        <button className="detected-btn" onClick={() => onSave(d, min)}>
+          <Plus size={10} /> Save to events
+        </button>
+      </div>
     </div>
   );
 }

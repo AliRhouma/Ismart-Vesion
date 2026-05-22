@@ -5,6 +5,7 @@ import { NET_HOME, LINKS_HOME, NET_AWAY, LINKS_AWAY } from '../data/mockData';
 import { CoachTooltip } from '../components/ui/CoachTooltip';
 import { Panel, Leg, StatCard } from '../components/ui/Panel';
 import { PassNetwork } from '../components/pitch/PassNetwork';
+import { PlayerPassMap } from '../components/pitch/PlayerPassMap';
 
 export function Passing() {
   const dir = [{ name: "Backward", home: 35, away: 28 }, { name: "Sideways", home: 120, away: 95 }, { name: "Forward", home: 82, away: 55 }, { name: "Long", home: 41, away: 26 }];
@@ -21,6 +22,10 @@ export function Passing() {
         <Panel title="Pass Network — Al Ahly"><PassNetwork nodes={NET_HOME} links={LINKS_HOME} color={HOME} /></Panel>
         <Panel title="Pass Network — Zamalek"><PassNetwork nodes={NET_AWAY} links={LINKS_AWAY} color={AWAY} /></Panel>
       </div>
+      <Panel title="Player Pass Map"
+        legend={<><Leg c={HOME} t="Completed" /><span className="lgnd-i"><span className="lgnd-d" style={{ background: "#FF4D4F" }} />Misplaced</span></>}>
+        <PlayerPassMap />
+      </Panel>
       <div className="g2">
         <Panel title="Pass Direction" legend={<><Leg c={HOME} t="Al Ahly" /><Leg c={AWAY} t="Zamalek" /></>}>
           <ResponsiveContainer width="100%" height={240}>

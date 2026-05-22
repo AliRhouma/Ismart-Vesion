@@ -85,3 +85,62 @@ export const EVENTS = [
   { id: 24, sec: 5620, min: "93'", type: "shot", team: "away", player: "A. Kahraba", detail: "Header · Over" },
 ];
 export const PERIODS = ["0-15'", "15-30'", "30-45'", "45-60'", "60-75'", "75-90'"];
+
+/* Squad rosters with jersey numbers + base pitch coords (viewBox 0 0 680 440).
+   Home attacks right → players sit on the left half. Away attacks left → right half. */
+export const ROSTER_HOME = [
+  { num: 1,  name: "Al Ahly GK",   pos: "GK",  x:  70, y: 220 },
+  { num: 5,  name: "M. Hany",      pos: "RB",  x: 175, y:  90 },
+  { num: 4,  name: "A. Hany",      pos: "CB",  x: 170, y: 175 },
+  { num: 3,  name: "O. Kamal",     pos: "CB",  x: 170, y: 265 },
+  { num: 2,  name: "Y. Ibrahim",   pos: "LB",  x: 175, y: 350 },
+  { num: 6,  name: "A. Dieng",     pos: "CDM", x: 280, y: 220 },
+  { num: 8,  name: "T. Salah",     pos: "CM",  x: 320, y: 130 },
+  { num: 10, name: "K. Fathy",     pos: "CM",  x: 320, y: 310 },
+  { num: 7,  name: "H. El Shahat", pos: "RW",  x: 460, y: 110 },
+  { num: 11, name: "O. Mostafa",   pos: "LW",  x: 460, y: 330 },
+  { num: 9,  name: "M. Sherif",    pos: "ST",  x: 540, y: 220 },
+];
+export const ROSTER_AWAY = [
+  { num: 1,  name: "Zamalek GK",     pos: "GK",  x: 610, y: 220 },
+  { num: 2,  name: "K. Fawzi",       pos: "RB",  x: 505, y:  90 },
+  { num: 4,  name: "M. Abdelmonem",  pos: "CB",  x: 510, y: 175 },
+  { num: 3,  name: "M. Abdelshafy",  pos: "CB",  x: 510, y: 265 },
+  { num: 5,  name: "H. Magdy",       pos: "LB",  x: 505, y: 350 },
+  { num: 6,  name: "O. El Said",     pos: "CDM", x: 400, y: 220 },
+  { num: 10, name: "S. Mustafa",     pos: "CM",  x: 360, y: 130 },
+  { num: 8,  name: "F. Sasi",        pos: "CM",  x: 360, y: 310 },
+  { num: 7,  name: "W. Sharabini",   pos: "RW",  x: 220, y: 110 },
+  { num: 11, name: "Z. Emam",        pos: "LW",  x: 220, y: 330 },
+  { num: 9,  name: "A. Kahraba",     pos: "ST",  x: 150, y: 220 },
+];
+
+/* Per-player passing log: `c` = completed, `m` = misplaced (wrong) passes to each teammate.
+   Keys use ROSTER ids (`home-<num>` / `away-<num>`). */
+export const PLAYER_PASSES = {
+  /* ===== Al Ahly ===== */
+  "home-1":  [ { to: "home-3", c: 8, m: 0 }, { to: "home-4", c: 7, m: 0 }, { to: "home-2", c: 4, m: 1 }, { to: "home-5", c: 4, m: 1 }, { to: "home-6", c: 6, m: 1 }, { to: "home-8", c: 2, m: 1 }, { to: "home-9", c: 1, m: 2 } ],
+  "home-5":  [ { to: "home-1", c: 3, m: 0 }, { to: "home-4", c: 6, m: 1 }, { to: "home-6", c: 5, m: 1 }, { to: "home-8", c: 5, m: 1 }, { to: "home-7", c: 8, m: 2 }, { to: "home-10", c: 3, m: 1 }, { to: "home-9", c: 2, m: 1 } ],
+  "home-4":  [ { to: "home-1", c: 5, m: 0 }, { to: "home-3", c: 12, m: 0 }, { to: "home-5", c: 6, m: 1 }, { to: "home-6", c: 9, m: 1 }, { to: "home-8", c: 6, m: 2 }, { to: "home-10", c: 4, m: 1 }, { to: "home-7", c: 3, m: 2 }, { to: "home-2", c: 5, m: 1 } ],
+  "home-3":  [ { to: "home-1", c: 4, m: 0 }, { to: "home-4", c: 11, m: 0 }, { to: "home-2", c: 7, m: 1 }, { to: "home-6", c: 8, m: 0 }, { to: "home-10", c: 5, m: 1 }, { to: "home-11", c: 3, m: 1 }, { to: "home-8", c: 5, m: 2 } ],
+  "home-2":  [ { to: "home-1", c: 3, m: 0 }, { to: "home-3", c: 6, m: 1 }, { to: "home-6", c: 5, m: 1 }, { to: "home-10", c: 6, m: 1 }, { to: "home-11", c: 8, m: 2 }, { to: "home-8", c: 3, m: 1 }, { to: "home-9", c: 2, m: 2 } ],
+  "home-6":  [ { to: "home-3", c: 7, m: 0 }, { to: "home-4", c: 8, m: 1 }, { to: "home-2", c: 5, m: 1 }, { to: "home-5", c: 5, m: 0 }, { to: "home-8", c: 9, m: 2 }, { to: "home-10", c: 8, m: 1 }, { to: "home-7", c: 4, m: 2 }, { to: "home-11", c: 3, m: 1 }, { to: "home-9", c: 3, m: 1 }, { to: "home-1", c: 2, m: 0 } ],
+  "home-8":  [ { to: "home-6", c: 8, m: 1 }, { to: "home-10", c: 9, m: 1 }, { to: "home-7", c: 7, m: 2 }, { to: "home-9", c: 4, m: 2 }, { to: "home-5", c: 4, m: 1 }, { to: "home-4", c: 5, m: 1 }, { to: "home-11", c: 2, m: 1 } ],
+  "home-10": [ { to: "home-6", c: 7, m: 0 }, { to: "home-8", c: 8, m: 1 }, { to: "home-11", c: 7, m: 1 }, { to: "home-2", c: 5, m: 1 }, { to: "home-3", c: 4, m: 1 }, { to: "home-9", c: 6, m: 3 }, { to: "home-7", c: 4, m: 2 } ],
+  "home-7":  [ { to: "home-9", c: 5, m: 2 }, { to: "home-8", c: 6, m: 1 }, { to: "home-10", c: 4, m: 1 }, { to: "home-5", c: 6, m: 1 }, { to: "home-6", c: 3, m: 0 }, { to: "home-4", c: 2, m: 1 } ],
+  "home-11": [ { to: "home-9", c: 4, m: 2 }, { to: "home-10", c: 6, m: 1 }, { to: "home-8", c: 3, m: 1 }, { to: "home-2", c: 6, m: 1 }, { to: "home-6", c: 2, m: 1 }, { to: "home-3", c: 2, m: 1 } ],
+  "home-9":  [ { to: "home-7", c: 6, m: 1 }, { to: "home-11", c: 5, m: 2 }, { to: "home-10", c: 4, m: 1 }, { to: "home-8", c: 3, m: 2 }, { to: "home-6", c: 2, m: 1 } ],
+
+  /* ===== Zamalek ===== */
+  "away-1":  [ { to: "away-4", c: 7, m: 1 }, { to: "away-3", c: 7, m: 0 }, { to: "away-2", c: 4, m: 1 }, { to: "away-5", c: 4, m: 1 }, { to: "away-6", c: 5, m: 1 }, { to: "away-9", c: 1, m: 3 } ],
+  "away-2":  [ { to: "away-1", c: 2, m: 0 }, { to: "away-4", c: 5, m: 1 }, { to: "away-6", c: 4, m: 1 }, { to: "away-10", c: 4, m: 1 }, { to: "away-7", c: 5, m: 2 }, { to: "away-8", c: 4, m: 1 }, { to: "away-9", c: 1, m: 2 } ],
+  "away-4":  [ { to: "away-1", c: 4, m: 0 }, { to: "away-3", c: 10, m: 1 }, { to: "away-2", c: 5, m: 1 }, { to: "away-6", c: 7, m: 1 }, { to: "away-10", c: 4, m: 1 }, { to: "away-7", c: 3, m: 2 }, { to: "away-8", c: 5, m: 2 } ],
+  "away-3":  [ { to: "away-1", c: 4, m: 0 }, { to: "away-4", c: 9, m: 1 }, { to: "away-5", c: 6, m: 1 }, { to: "away-6", c: 7, m: 1 }, { to: "away-8", c: 5, m: 2 }, { to: "away-11", c: 3, m: 2 }, { to: "away-10", c: 4, m: 1 } ],
+  "away-5":  [ { to: "away-1", c: 3, m: 0 }, { to: "away-3", c: 5, m: 1 }, { to: "away-6", c: 4, m: 1 }, { to: "away-8", c: 5, m: 2 }, { to: "away-11", c: 6, m: 2 }, { to: "away-10", c: 3, m: 1 }, { to: "away-9", c: 1, m: 2 } ],
+  "away-6":  [ { to: "away-3", c: 6, m: 1 }, { to: "away-4", c: 6, m: 1 }, { to: "away-2", c: 4, m: 1 }, { to: "away-5", c: 4, m: 1 }, { to: "away-8", c: 8, m: 2 }, { to: "away-10", c: 7, m: 2 }, { to: "away-7", c: 3, m: 2 }, { to: "away-11", c: 3, m: 1 }, { to: "away-9", c: 2, m: 1 } ],
+  "away-10": [ { to: "away-6", c: 7, m: 1 }, { to: "away-8", c: 7, m: 2 }, { to: "away-7", c: 6, m: 2 }, { to: "away-2", c: 4, m: 1 }, { to: "away-9", c: 5, m: 3 }, { to: "away-4", c: 3, m: 1 } ],
+  "away-8":  [ { to: "away-6", c: 7, m: 1 }, { to: "away-10", c: 8, m: 1 }, { to: "away-11", c: 6, m: 2 }, { to: "away-5", c: 5, m: 2 }, { to: "away-3", c: 4, m: 1 }, { to: "away-9", c: 4, m: 3 } ],
+  "away-7":  [ { to: "away-9", c: 4, m: 2 }, { to: "away-10", c: 5, m: 2 }, { to: "away-6", c: 3, m: 1 }, { to: "away-2", c: 4, m: 1 }, { to: "away-8", c: 3, m: 1 } ],
+  "away-11": [ { to: "away-9", c: 4, m: 3 }, { to: "away-8", c: 5, m: 2 }, { to: "away-10", c: 4, m: 2 }, { to: "away-5", c: 5, m: 1 }, { to: "away-6", c: 2, m: 1 } ],
+  "away-9":  [ { to: "away-7", c: 4, m: 2 }, { to: "away-11", c: 5, m: 3 }, { to: "away-10", c: 3, m: 2 }, { to: "away-8", c: 2, m: 2 }, { to: "away-6", c: 2, m: 1 } ],
+};
