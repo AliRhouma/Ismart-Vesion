@@ -1,16 +1,23 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Activity, Crosshair, Download, FileText, Link2, Loader2, MessageSquare, Pause, Play, Plus, Repeat, Send, Share2, SkipBack, SkipForward, Sparkles, Target, Upload, Users } from 'lucide-react';
+import { Activity, ChevronDown, Crosshair, Download, FileText, Link2, Loader2, MessageSquare, Pause, Play, Plus, Repeat, Send, Share2, SkipBack, SkipForward, Sparkles, Target, Upload, Users } from 'lucide-react';
 import { C, HOME, AWAY } from '../constants/theme';
 import { EVENTS, ROSTER_HOME, ROSTER_AWAY } from '../data/mockData';
 import { AnalysingSkeleton, Leg } from '../components/ui/Panel';
 import { Pitch } from '../components/pitch/Pitch';
 
 /* Video tab */
-const DAILYMOTION_SRC = "https://geo.dailymotion.com/player.html?video=xaajou0";
+const DAILYMOTION_SRC = "https://geo.dailymotion.com/player.html?video=xaajou0&mute=true";
 const TOTAL = 5647;
 const fmt = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 const teamColor = (t) => t === "home" ? HOME : t === "away" ? AWAY : C.softBlue;
 const TIMELINE_TYPES = ["goal", "shot", "save", "card", "corner", "foul", "sub", "offside", "tackle", "interception", "clearance", "cross", "block"];
+/* Timeline shows only shots + goals on first load; the rest are enabled via the filter chips. */
+const DEFAULT_TIMELINE_TYPES = ["goal", "shot"];
+/* Events panel shows these 6 categories by default; "All" enables the rest. */
+const DEFAULT_EVENT_TYPES = ["goals", "shots", "saves", "cards", "corners", "fouls"];
+const ALL_EVENT_TYPES = ["goals", "shots", "saves", "cards", "corners", "fouls", "subs", "offsides", "tackles", "interceptions", "clearances", "crosses", "blocks"];
+/* Live Commentary is hidden for now. */
+const SHOW_COMMENTARY = false;
 
 const playerPos = (p, sec) => {
   const phase = p.num * 1.31 + (p.team === "away" ? 2.15 : 0);
@@ -87,8 +94,10 @@ export function VideoTab({ toast, match, onUpload }) {
   const [speed, setSpeed] = useState(1);
   const [events, setEvents] = useState(EVENTS);
   const [teamF, setTeamF] = useState("all");
-  const [typeF, setTypeF] = useState("all");
-  const [timelineTypes, setTimelineTypes] = useState(TIMELINE_TYPES);
+  const [typeSel, setTypeSel] = useState(DEFAULT_EVENT_TYPES); // multi-select event categories
+  const [showEventFilters, setShowEventFilters] = useState(false);
+  const [playerF, setPlayerF] = useState("all");
+  const [timelineTypes, setTimelineTypes] = useState(DEFAULT_TIMELINE_TYPES);
   const [timelineTeam, setTimelineTeam] = useState("all");
   const [showTimelineFilters, setShowTimelineFilters] = useState(true);
   const [active, setActive] = useState(5);
@@ -148,6 +157,8 @@ export function VideoTab({ toast, match, onUpload }) {
     if (viewMode === "video") sendDmCommand(next ? "play" : "pause");
   };
 
+  const swapView = () => setViewMode((v) => (v === "video" ? "pitch" : "video"));
+
   const [panelTab, setPanelTab] = useState("events");
   const [chat, setChat] = useState(INITIAL_CHAT);
   const [chatInput, setChatInput] = useState("");
@@ -198,9 +209,17 @@ export function VideoTab({ toast, match, onUpload }) {
     sub: "subs", offside: "offsides", tackle: "tackles", interception: "interceptions",
     clearance: "clearances", cross: "crosses", block: "blocks",
   };
-  const filtered = events.filter((e) => (teamF === "all" || e.team === teamF) && (typeF === "all" || TYPE_CAT[e.type] === typeF));
+  const filtered = events.filter((e) =>
+    (teamF === "all" || e.team === teamF) &&
+    typeSel.includes(TYPE_CAT[e.type]) &&
+    (playerF === "all" || (e.player && e.player.includes(playerF)))
+  );
   const seek = (s) => setSec(Math.max(0, Math.min(TOTAL, s)));
   const counts = (pred) => events.filter(pred).length;
+  /* Team and player are mutually exclusive: a player already implies a team. */
+  const onTeam = (k) => { setTeamF(k); if (k !== "all") setPlayerF("all"); };
+  const onPlayer = (name) => { setPlayerF(name); if (name !== "all") setTeamF("all"); };
+  const toggleType = (k) => setTypeSel((prev) => prev.includes(k) ? prev.filter((x) => x !== k) : [...prev, k]);
 
   const addEvent = () => {
     const m = parseInt(form.min) || 0, id = Date.now();
@@ -306,7 +325,8 @@ export function VideoTab({ toast, match, onUpload }) {
       <div className="left-col">
         <div className="video-wrap">
           <div className="video-area" onClick={viewMode === "pitch" ? () => setPlaying((p) => !p) : undefined}>
-            {viewMode === "video" ? (
+            {/* Video layer — stays mounted (and playing) even when minimised to the corner */}
+            <div className={"va-layer" + (viewMode === "video" ? " is-main" : " is-pip")}>
               <div className="dm-embed">
                 <iframe
                   ref={iframeRef}
@@ -319,48 +339,59 @@ export function VideoTab({ toast, match, onUpload }) {
                   allowFullScreen
                 />
               </div>
-            ) : (
-              <>
-                <Pitch vb="0 0 680 440">
-                  {ALL_PLAYERS.map((p) => {
-                    const pos = playerPos(p, sec);
-                    const color = teamColor(p.team);
-                    return (
-                      <g key={`${p.team}-${p.num}`} style={{ pointerEvents: "none" }}>
-                        <circle cx={pos.x} cy={pos.y} r={11}
-                          fill={color} stroke="rgba(0,0,0,0.55)" strokeWidth="1" />
-                        <text x={pos.x} y={pos.y + 3.6} textAnchor="middle"
-                          fontSize="10.5" fontFamily="Syne" fontWeight="700"
-                          fill={p.team === "home" ? "#0d2b1a" : "#fff"}>
-                          {p.num}
-                        </text>
-                      </g>
-                    );
-                  })}
-                  {(() => {
-                    const bp = ballPos(sec);
-                    return (
-                      <g style={{ pointerEvents: "none" }}>
-                        <ellipse cx={bp.x} cy={bp.y + 4} rx="5.5" ry="1.6" fill="rgba(0,0,0,0.45)" />
-                        <circle cx={bp.x} cy={bp.y} r="9" fill="#fff" opacity="0.14" />
-                        <circle cx={bp.x} cy={bp.y} r="5" fill="#fff" stroke="rgba(0,0,0,0.55)" strokeWidth="0.7" />
-                        <circle cx={bp.x - 1.1} cy={bp.y - 1.1} r="1.6" fill="#0d2b1a" opacity="0.55" />
-                      </g>
-                    );
-                  })()}
-                </Pitch>
-                {!playing && (
-                  <div className="play-overlay">
-                    <div className="play-btn-big"><Play size={22} fill={C.green} stroke="none" /></div>
-                  </div>
-                )}
-              </>
-            )}
-            <button className="view-toggle"
-              onClick={(e) => { e.stopPropagation(); setViewMode((v) => v === "video" ? "pitch" : "video"); }}
-              title="Switch view">
-              <Repeat size={11} /> {viewMode === "video" ? "Pitch View" : "Video View"}
-            </button>
+              {viewMode !== "video" && (
+                <div className="pip-hit" role="button" tabIndex={0} title="Switch to video view"
+                  onClick={(e) => { e.stopPropagation(); swapView(); }}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); swapView(); } }}>
+                  <span className="pip-label"><Repeat size={10} /> Video</span>
+                </div>
+              )}
+            </div>
+
+            {/* Tactical pitch layer — floats in the corner while the video plays */}
+            <div className={"va-layer" + (viewMode === "pitch" ? " is-main" : " is-pip")}>
+              <Pitch vb="0 0 680 440">
+                {ALL_PLAYERS.map((p) => {
+                  const pos = playerPos(p, sec);
+                  const color = teamColor(p.team);
+                  return (
+                    <g key={`${p.team}-${p.num}`} style={{ pointerEvents: "none" }}>
+                      <circle cx={pos.x} cy={pos.y} r={11}
+                        fill={color} stroke="rgba(0,0,0,0.55)" strokeWidth="1" />
+                      <text x={pos.x} y={pos.y + 3.6} textAnchor="middle"
+                        fontSize="10.5" fontFamily="Syne" fontWeight="700"
+                        fill={p.team === "home" ? "#0d2b1a" : "#fff"}>
+                        {p.num}
+                      </text>
+                    </g>
+                  );
+                })}
+                {(() => {
+                  const bp = ballPos(sec);
+                  return (
+                    <g style={{ pointerEvents: "none" }}>
+                      <ellipse cx={bp.x} cy={bp.y + 4} rx="5.5" ry="1.6" fill="rgba(0,0,0,0.45)" />
+                      <circle cx={bp.x} cy={bp.y} r="9" fill="#fff" opacity="0.14" />
+                      <circle cx={bp.x} cy={bp.y} r="5" fill="#fff" stroke="rgba(0,0,0,0.55)" strokeWidth="0.7" />
+                      <circle cx={bp.x - 1.1} cy={bp.y - 1.1} r="1.6" fill="#0d2b1a" opacity="0.55" />
+                    </g>
+                  );
+                })()}
+              </Pitch>
+              {viewMode === "pitch" && !playing && (
+                <div className="play-overlay">
+                  <div className="play-btn-big"><Play size={22} fill={C.green} stroke="none" /></div>
+                </div>
+              )}
+              {viewMode !== "pitch" && (
+                <div className="pip-hit" role="button" tabIndex={0} title="Switch to pitch view"
+                  onClick={(e) => { e.stopPropagation(); swapView(); }}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); swapView(); } }}>
+                  <span className="pip-label"><Repeat size={10} /> Pitch</span>
+                </div>
+              )}
+            </div>
+
             <div className="video-badge-tl">
               <span className="dot" style={{ background: HOME }} /> {homeLabel}
               <span style={{ color: C.muted2, padding: "0 .3rem" }}>vs</span>
@@ -464,16 +495,18 @@ export function VideoTab({ toast, match, onUpload }) {
       </div>
 
       <div className="events-panel">
-        <div className="panel-subtabs">
-          <button className={"panel-subtab" + (panelTab === "events" ? " on" : "")}
-            onClick={() => setPanelTab("events")}>
-            <Activity size={11} /> Events
-          </button>
-          <button className={"panel-subtab" + (panelTab === "commentary" ? " on" : "")}
-            onClick={() => setPanelTab("commentary")}>
-            <MessageSquare size={11} /> Live Commentary
-          </button>
-        </div>
+        {SHOW_COMMENTARY && (
+          <div className="panel-subtabs">
+            <button className={"panel-subtab" + (panelTab === "events" ? " on" : "")}
+              onClick={() => setPanelTab("events")}>
+              <Activity size={11} /> Events
+            </button>
+            <button className={"panel-subtab" + (panelTab === "commentary" ? " on" : "")}
+              onClick={() => setPanelTab("commentary")}>
+              <MessageSquare size={11} /> Live Commentary
+            </button>
+          </div>
+        )}
 
         {panelTab === "events" ? (
           analysing ? (
@@ -483,19 +516,43 @@ export function VideoTab({ toast, match, onUpload }) {
             <div className="ep-top">
               <div className="ep-title-row">
                 <div className="ep-title">Events</div>
-                <div className="ev-count">{filtered.length} event{filtered.length !== 1 ? "s" : ""}</div>
+                <div className="ep-title-right">
+                  <div className="ev-count">{filtered.length} event{filtered.length !== 1 ? "s" : ""}</div>
+                  <button className="tl-toggle" onClick={() => setShowEventFilters((v) => !v)}>{showEventFilters ? "Hide Filters" : "Show Filters"}</button>
+                </div>
               </div>
-              <div className="team-tabs">
-                {[["all", "All"], ["home", homeLabel], ["away", awayLabel]].map(([k, l]) => (
-                  <button key={k} onClick={() => setTeamF(k)}
-                    className={"team-tab" + (teamF === k ? (k === "all" ? " t-all" : k === "home" ? " t-home" : " t-away") : "")}>{l}</button>
-                ))}
-              </div>
-              <div className="filter-bar">
-                {FILTERS.map(([k, l]) => (
-                  <button key={k} className={"chip" + (typeF === k ? " active" : "")} onClick={() => setTypeF(k)}>{l}</button>
-                ))}
-              </div>
+              {showEventFilters && (
+                <div className="timeline-filter">
+                  <div className="tl-filter-row">
+                    <span className="tl-filter-lbl">Team</span>
+                    {[["all", "All"], ["home", homeLabel], ["away", awayLabel]].map(([k, l]) => (
+                      <button key={k} className={"tl-chip" + (teamF === k ? " active" : "")} onClick={() => onTeam(k)}>{l}</button>
+                    ))}
+                  </div>
+                  <div className="tl-filter-row">
+                    <span className="tl-filter-lbl">Events</span>
+                    <button className={"tl-chip" + (typeSel.length === ALL_EVENT_TYPES.length ? " active" : "")} onClick={() => setTypeSel(ALL_EVENT_TYPES)}>All</button>
+                    {FILTERS.filter(([k]) => k !== "all").map(([k, l]) => (
+                      <button key={k} className={"tl-chip" + (typeSel.includes(k) ? " active" : "")} onClick={() => toggleType(k)}>{l}</button>
+                    ))}
+                  </div>
+                  <div className="tl-filter-row">
+                    <span className="tl-filter-lbl">Player</span>
+                    <div className="ev-sel-wrap" style={{ flex: 1 }}>
+                      <select className="ev-select" value={playerF} onChange={(e) => onPlayer(e.target.value)} aria-label="Filter by player">
+                        <option value="all">All players</option>
+                        <optgroup label={homeLabel}>
+                          {ROSTER_HOME.map((p) => <option key={`h-${p.num}`} value={p.name}>#{p.num} · {p.name}</option>)}
+                        </optgroup>
+                        <optgroup label={awayLabel}>
+                          {ROSTER_AWAY.map((p) => <option key={`a-${p.num}`} value={p.name}>#{p.num} · {p.name}</option>)}
+                        </optgroup>
+                      </select>
+                      <ChevronDown size={12} className="ev-sel-icon" />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
             <div className="events-list">
               {filtered.length === 0 && <div className="no-events"><p>No events found</p><span>Try changing the filters</span></div>}

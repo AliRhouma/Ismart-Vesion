@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   LayoutGrid, Film, Target, Activity, Users, FileText, Shield, Play,
   Share2, Download, Crosshair, BarChart3, Footprints, ChevronRight, ArrowLeft, Loader2,
+  PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
 import { C, HOME, AWAY } from "./src/constants/theme";
 import { CSS } from "./src/styles/appStyles";
@@ -14,6 +15,7 @@ import { Heatmaps } from "./src/tabs/Heatmaps";
 import { Passing } from "./src/tabs/Passing";
 import { PlayersTab } from "./src/tabs/PlayersTab";
 import { MatchesPage, NewMatchModal, MOCK_MATCHES } from "./src/tabs/MatchesPage";
+import { AnalyticsPage } from "./src/tabs/AnalyticsPage";
 import { AnalysingSkeleton } from "./src/components/ui/Panel";
 
 const TABS = [
@@ -32,6 +34,7 @@ export default function App() {
   const [match, setMatch] = useState(MOCK_MATCHES[0]);
   const [tab, setTab] = useState("video");
   const [newOpen, setNewOpen] = useState(false);
+  const [navCollapsed, setNavCollapsed] = useState(false);
   const [toastMsg, setToastMsg] = useState(null);
   const analyseTimer = useRef(null);
   const toast = (m) => { setToastMsg(m); setTimeout(() => setToastMsg(null), 2400); };
@@ -40,6 +43,7 @@ export default function App() {
 
   const openMatch = (m) => { clearTimeout(analyseTimer.current); setMatch(m); setView("match"); setTab("video"); };
   const goMatches = () => { clearTimeout(analyseTimer.current); setView("matches"); };
+  const goAnalytics = () => { clearTimeout(analyseTimer.current); setView("analytics"); };
   const handleUpload = () => {
     setMatch((m) => ({ ...m, hasVideo: true, analysing: true, status: "Analysing" }));
     toast("Video uploaded — analysing match…");
@@ -52,6 +56,8 @@ export default function App() {
   };
 
   const isMatchesView = view === "matches";
+  const isMatchView = view === "match";
+  const isAnalyticsView = view === "analytics";
   const homeTeam = match.home ? "Al Ahly SC" : match.opponent;
   const awayTeam = match.home ? match.opponent : "Al Ahly SC";
   const homeCode = match.home ? "AH" : match.opponentCode;
@@ -68,12 +74,18 @@ export default function App() {
         <div className="tb-div" />
         <nav className="breadcrumb">
           <span className="bc-link" onClick={goMatches}>Matches</span>
-          {!isMatchesView && (
+          {isMatchView && (
             <>
               <ChevronRight size={11} style={{ verticalAlign: "middle", margin: "0 .15rem", color: C.muted2 }} />
               <b>Al Ahly vs {match.opponent}</b>
               <ChevronRight size={11} style={{ verticalAlign: "middle", margin: "0 .15rem", color: C.muted2 }} />
               <span className="g">{match.hasVideo ? "Analysis" : "New Match"}</span>
+            </>
+          )}
+          {isAnalyticsView && (
+            <>
+              <ChevronRight size={11} style={{ verticalAlign: "middle", margin: "0 .15rem", color: C.muted2 }} />
+              <b>Team Analytics</b>
             </>
           )}
         </nav>
@@ -84,26 +96,34 @@ export default function App() {
       </header>
 
       <div className="layout">
-        <aside className="sidebar">
+        <aside className={"sidebar" + (navCollapsed ? " collapsed" : "")}>
+          <button className="si-toggle" onClick={() => setNavCollapsed((c) => !c)}
+            title={navCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={navCollapsed ? "Expand sidebar" : "Collapse sidebar"}>
+            {navCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+          </button>
           <div className="ns">Workspace</div>
           {[
             ["Dashboard", LayoutGrid, false, null],
             ["Matches", Film, isMatchesView, goMatches],
-            ["Video Analysis", Play, !isMatchesView, null],
+            ["Video Analysis", Play, isMatchView, null],
             ["Players", Users, false, null],
-            ["Analytics", BarChart3, false, null],
+            ["Analytics", BarChart3, isAnalyticsView, goAnalytics],
           ].map(([l, Ic, on, click]) => (
             <a key={l} className={"ni" + (on ? " a" : "")} onClick={click || undefined}
+              title={navCollapsed ? l : undefined}
               style={click ? { cursor: "pointer" } : {}}>
-              <Ic size={14} />{l}
+              <Ic size={14} /><span className="ni-label">{l}</span>
             </a>
           ))}
           <div className="ns" style={{ marginTop: ".4rem" }}>Reports</div>
-          {[["Reports", FileText], ["Scouting", Shield]].map(([l, Ic]) => (<a key={l} className="ni"><Ic size={14} />{l}</a>))}
+          {[["Reports", FileText], ["Scouting", Shield]].map(([l, Ic]) => (
+            <a key={l} className="ni" title={navCollapsed ? l : undefined}><Ic size={14} /><span className="ni-label">{l}</span></a>
+          ))}
           <div className="si-foot">
-            <div style={{ display: "flex", alignItems: "center", gap: ".5rem" }}>
+            <div className="si-foot-inner">
               <div className="av">BA</div>
-              <div><div style={{ fontFamily: "Syne", fontSize: ".72rem", fontWeight: 700 }}>Bilel Analyst</div>
+              <div className="si-user"><div style={{ fontFamily: "Syne", fontSize: ".72rem", fontWeight: 700 }}>Bilel Analyst</div>
                 <div style={{ fontFamily: "DM Sans", fontSize: ".62rem", color: C.muted2 }}>Head Analyst</div></div>
             </div>
           </div>
@@ -111,7 +131,9 @@ export default function App() {
 
         <main className="main">
           {isMatchesView ? (
-            <MatchesPage onSelect={openMatch} onNew={() => setNewOpen(true)} />
+            <MatchesPage onSelect={openMatch} onNew={() => setNewOpen(true)} toast={toast} />
+          ) : isAnalyticsView ? (
+            <AnalyticsPage toast={toast} />
           ) : (
             <>
               <div className="mh">

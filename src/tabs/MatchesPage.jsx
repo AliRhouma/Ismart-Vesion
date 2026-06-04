@@ -1,6 +1,17 @@
 import React, { useState } from 'react';
-import { Calendar, Plus } from 'lucide-react';
+import { Calendar, Plus, MoreVertical, Pencil, Download, Trash2 } from 'lucide-react';
 import { C, HOME, AWAY } from '../constants/theme';
+
+/* Match thumbnails — assigned per card so each match shows a still. */
+export const MATCH_IMAGES = [
+  'https://c.veocdn.com/007e327c-e175-4964-b92a-f8de6877ed11/standard/machine/ba72913b/thumbnail.jpg',
+  'https://c.veocdn.com/b180726c-a8fb-4bb3-a118-d93d0a001a1d/standard/machine/f9f9b843/thumbnail.jpg',
+  'https://c.veocdn.com/78449c4f-83ff-4ed6-9938-1bd9deed0f16/standard/machine/44745fd8/thumbnail.jpg',
+  'https://c.veocdn.com/937b21e0-ab04-452a-b9ad-6a00b0ab35d7/standard/machine/98445757/thumbnail.jpg',
+  'https://c.veocdn.com/5d1d0bf1-a598-4792-8bf3-1eceacefca6d/standard/machine/baee7a52/thumbnail.jpg',
+];
+/* Deterministic-but-scattered pick so a card keeps the same image across renders. */
+const pickImage = (m) => MATCH_IMAGES[(m.id * 7 + 3) % MATCH_IMAGES.length];
 
 /* Mock matches — every card opens the same Ahly vs Zamalek analysis;
    only opponent name + final score vary per card. */
@@ -13,7 +24,18 @@ export const MOCK_MATCHES = [
   { id: 6, opponent: 'ENPPI',       opponentCode: 'EN', date: 'Apr 6, 2026',  competition: 'Premier League', home: true,  scoreH: 4, scoreA: 1, status: 'Analysed', hasVideo: true },
 ];
 
-export function MatchesPage({ onSelect, onNew }) {
+export function MatchesPage({ onSelect, onNew, toast }) {
+  const [matches, setMatches] = useState(MOCK_MATCHES);
+  const [openMenuId, setOpenMenuId] = useState(null);
+  const notify = (msg) => (toast ? toast(msg) : undefined);
+
+  const handleDelete = (m) => {
+    setMatches((list) => list.filter((x) => x.id !== m.id));
+    notify(`Deleted — Al Ahly vs ${m.opponent}`);
+  };
+  const handleDownload = (m) => notify(`Downloading report — Al Ahly vs ${m.opponent}`);
+  const handleEdit = (m) => notify(`Editing match — Al Ahly vs ${m.opponent}`);
+
   return (
     <div className="matches-page">
       <div className="matches-hdr">
@@ -24,8 +46,37 @@ export function MatchesPage({ onSelect, onNew }) {
         <button className="btn-p" onClick={onNew}><Plus size={14} /> New Match</button>
       </div>
       <div className="matches-grid">
-        {MOCK_MATCHES.map((m) => (
-          <button key={m.id} className="match-card" onClick={() => onSelect(m)}>
+        {matches.map((m) => (
+          <div key={m.id} className="match-card" role="button" tabIndex={0}
+            onClick={() => onSelect(m)}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(m); } }}>
+            <div className="mc-media">
+              <img className="mc-thumb" src={pickImage(m)} alt="" loading="lazy" />
+              <div className="mc-media-grad" />
+            </div>
+            <div className="mc-menu-wrap">
+              <button className="mc-menu-btn" aria-label="Match actions" aria-haspopup="menu"
+                aria-expanded={openMenuId === m.id}
+                onClick={(e) => { e.stopPropagation(); setOpenMenuId((id) => (id === m.id ? null : m.id)); }}>
+                <MoreVertical size={16} />
+              </button>
+              {openMenuId === m.id && (
+                <div className="mc-menu" role="menu" onClick={(e) => e.stopPropagation()}>
+                  <button className="mc-menu-item" role="menuitem"
+                    onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); handleEdit(m); }}>
+                    <Pencil size={13} /> Edit
+                  </button>
+                  <button className="mc-menu-item" role="menuitem"
+                    onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); handleDownload(m); }}>
+                    <Download size={13} /> Download
+                  </button>
+                  <button className="mc-menu-item danger" role="menuitem"
+                    onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); handleDelete(m); }}>
+                    <Trash2 size={13} /> Delete
+                  </button>
+                </div>
+              )}
+            </div>
             <div className="mc-top">
               <span className="mc-comp">{m.competition}</span>
               <span className="mc-status"><span className="pu" />{m.status}</span>
@@ -54,9 +105,10 @@ export function MatchesPage({ onSelect, onNew }) {
             <div className="mc-foot">
               <Calendar size={11} /> {m.date}
             </div>
-          </button>
+          </div>
         ))}
       </div>
+      {openMenuId !== null && <div className="mc-menu-backdrop" onClick={() => setOpenMenuId(null)} />}
     </div>
   );
 }
