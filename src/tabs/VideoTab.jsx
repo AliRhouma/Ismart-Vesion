@@ -1,8 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Activity, ChevronDown, Crosshair, Download, FileText, Link2, Loader2, MessageSquare, Pause, Play, Plus, Repeat, Send, Share2, SkipBack, SkipForward, Sparkles, Target, Upload, Users } from 'lucide-react';
-import { C, HOME, AWAY } from '../constants/theme';
-import { EVENTS, ROSTER_HOME, ROSTER_AWAY } from '../data/mockData';
+import { Activity, BarChart3, ChevronDown, Crosshair, Download, FileText, Link2, Loader2, MessageSquare, Pause, Play, Plus, Repeat, Send, Share2, SkipBack, SkipForward, Sparkles, Target, Upload, Users } from 'lucide-react';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { C, HOME, AWAY, GRID, TICK } from '../constants/theme';
+import { EVENTS, ROSTER_HOME, ROSTER_AWAY, SHOTS_HOME, SHOTS_AWAY } from '../data/mockData';
 import { AnalysingSkeleton, Leg } from '../components/ui/Panel';
+import { CoachTooltip } from '../components/ui/CoachTooltip';
 import { Pitch } from '../components/pitch/Pitch';
 
 /* Video tab */
@@ -495,18 +497,22 @@ export function VideoTab({ toast, match, onUpload }) {
       </div>
 
       <div className="events-panel">
-        {SHOW_COMMENTARY && (
-          <div className="panel-subtabs">
-            <button className={"panel-subtab" + (panelTab === "events" ? " on" : "")}
-              onClick={() => setPanelTab("events")}>
-              <Activity size={11} /> Events
-            </button>
+        <div className="panel-subtabs">
+          <button className={"panel-subtab" + (panelTab === "events" ? " on" : "")}
+            onClick={() => setPanelTab("events")}>
+            <Activity size={11} /> Events
+          </button>
+          <button className={"panel-subtab" + (panelTab === "stats" ? " on" : "")}
+            onClick={() => setPanelTab("stats")}>
+            <BarChart3 size={11} /> Live Stats
+          </button>
+          {SHOW_COMMENTARY && (
             <button className={"panel-subtab" + (panelTab === "commentary" ? " on" : "")}
               onClick={() => setPanelTab("commentary")}>
-              <MessageSquare size={11} /> Live Commentary
+              <MessageSquare size={11} /> Commentary
             </button>
-          </div>
-        )}
+          )}
+        </div>
 
         {panelTab === "events" ? (
           analysing ? (
@@ -585,6 +591,12 @@ export function VideoTab({ toast, match, onUpload }) {
               <Plus size={12} /> Add event at current time
             </button>
           </>
+          )
+        ) : panelTab === "stats" ? (
+          analysing ? (
+            <AnalysingSkeleton label="Computing live stats…" sub="Possession, xG and momentum" bars={5} />
+          ) : (
+            <LiveStats events={events} sec={sec} homeLabel={homeLabel} awayLabel={awayLabel} />
           )
         ) : (
           <div className="commentary">
@@ -703,6 +715,255 @@ function DetectedCard({ d, min, onSave }) {
         <button className="detected-btn" onClick={() => onSave(d, min)}>
           <Plus size={10} /> Save to events
         </button>
+      </div>
+    </div>
+  );
+}
+
+/* Live Stats — every figure reflects only what has happened up to the current
+   playback position (sec), so the numbers accumulate as the match plays.
+   Softer, desaturated palette (scoped to this panel) keeps long real-time
+   watching easy on the eye versus the neon brand colours. */
+const LS_HOME = C.green;      // brand green — coach's team
+const LS_AWAY = "#6B7079";    // mid gray — opponent
+const LS_GRID = "rgba(255,255,255,0.05)";
+const LS_TICK = { fill: "#8b9096", fontFamily: "DM Sans, sans-serif", fontSize: 9 };
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+const POSS_BY_PERIOD = [58, 55, 62, 53, 59, 50]; // home possession % per 15' block
+/* Home squad fitness profiles — drives the real-time player-load / sub board. */
+const SQUAD_LOAD = [
+  { name: "O. Mostafa",   pos: "LW",  dist90: 11.2, sprints90: 46, stamina: 0.74 },
+  { name: "H. El Shahat", pos: "RW",  dist90: 11.0, sprints90: 44, stamina: 0.77 },
+  { name: "M. Sherif",    pos: "ST",  dist90: 10.6, sprints90: 38, stamina: 0.82 },
+  { name: "A. Dieng",     pos: "CDM", dist90: 11.8, sprints90: 24, stamina: 0.90 },
+  { name: "Y. Ibrahim",   pos: "LB",  dist90: 10.9, sprints90: 35, stamina: 0.85 },
+];
+
+/* Time windows the coach can scope every stat to. "Up to now" and "Last 15'"
+   track the playhead; the half / full windows are fixed for review. */
+const WIN_OPTS = [
+  ["live", "Up to now"],
+  ["last15", "Last 15'"],
+  ["h1", "1st Half"],
+  ["h2", "2nd Half"],
+  ["full", "Full Match"],
+  ["custom", "Custom"],
+];
+const MATCH_MIN = 94; // full-time minute used by the custom range
+
+function LiveStats({ events, sec, homeLabel, awayLabel }) {
+  const liveMin = Math.floor(sec / 60);
+  const [win, setWin] = useState("live");
+  const [cFrom, setCFrom] = useState(0);
+  const [cTo, setCTo] = useState(45);
+
+  /* Resolve the active window [fromSec, toSec] from the chosen filter. */
+  let fromSec = 0, toSec = sec;
+  if (win === "full") { fromSec = 0; toSec = TOTAL; }
+  else if (win === "h1") { fromSec = 0; toSec = 2700; }
+  else if (win === "h2") { fromSec = 2700; toSec = TOTAL; }
+  else if (win === "last15") { fromSec = Math.max(0, sec - 900); toSec = sec; }
+  else if (win === "custom") { fromSec = cFrom * 60; toSec = cTo * 60; }
+  const fromMin = Math.floor(fromSec / 60);
+  const toMin = Math.floor(toSec / 60);
+  const winLabel = win === "live" ? `up to ${liveMin}'`
+    : win === "full" ? "full match"
+    : win === "h1" ? "1st half"
+    : win === "h2" ? "2nd half"
+    : `${fromMin}'–${toMin}'`;
+
+  const inWin = events.filter((e) => e.sec > fromSec && e.sec <= toSec);
+  const cnt = (pred) => inWin.filter(pred).length;
+  const isShot = (e) => e.type === "shot" || e.type === "goal";
+  const onTgt = (e) => e.type === "goal" || (e.detail && /sav/i.test(e.detail));
+
+  const goalsH = cnt((e) => e.type === "goal" && e.team === "home");
+  const goalsA = cnt((e) => e.type === "goal" && e.team === "away");
+
+  /* xG summed over the active window, by shot minute. */
+  const sumXg = (shots, fromM, toM) => +shots.filter((s) => s.min > fromM && s.min <= toM).reduce((a, s) => a + s.xg, 0).toFixed(2);
+  const xgH = sumXg(SHOTS_HOME, fromMin, toMin);
+  const xgA = sumXg(SHOTS_AWAY, fromMin, toMin);
+
+  /* Time-weighted possession across the active window. */
+  const possWin = (fromM, toM) => {
+    let tot = 0, w = 0;
+    for (let p = 0; p < 6; p++) {
+      const seg = Math.max(0, Math.min(toM, (p + 1) * 15) - Math.max(fromM, p * 15));
+      if (seg <= 0) continue;
+      tot += POSS_BY_PERIOD[p] * seg; w += seg;
+    }
+    return w ? Math.round(tot / w) : 50;
+  };
+  const possH = possWin(fromMin, toMin);
+  const possA = 100 - possH;
+
+  /* Play territory — share of time the ball spends in each third (home view). */
+  let tAtt = clamp(34 + (possH - 50) * 0.5, 18, 50);
+  let tDef = clamp(28 - (possH - 50) * 0.3, 16, 44);
+  let tMid = Math.max(100 - tAtt - tDef, 6);
+  const tSum = tAtt + tDef + tMid;
+  const att = Math.round((tAtt / tSum) * 100);
+  const def = Math.round((tDef / tSum) * 100);
+  const mid = 100 - att - def;
+
+  const metrics = [
+    { label: "Shots", h: cnt((e) => isShot(e) && e.team === "home"), a: cnt((e) => isShot(e) && e.team === "away") },
+    { label: "Shots on Target", h: cnt((e) => isShot(e) && onTgt(e) && e.team === "home"), a: cnt((e) => isShot(e) && onTgt(e) && e.team === "away") },
+    { label: "Expected Goals (xG)", h: xgH, a: xgA, dec: true },
+    { label: "Corners", h: cnt((e) => e.type === "corner" && e.team === "home"), a: cnt((e) => e.type === "corner" && e.team === "away") },
+    { label: "Fouls", h: cnt((e) => e.type === "foul" && e.team === "home"), a: cnt((e) => e.type === "foul" && e.team === "away") },
+    { label: "Cards", h: cnt((e) => e.type === "card" && e.team === "home"), a: cnt((e) => e.type === "card" && e.team === "away") },
+    { label: "Tackles", h: cnt((e) => e.type === "tackle" && e.team === "home"), a: cnt((e) => e.type === "tackle" && e.team === "away") },
+    { label: "Saves", h: cnt((e) => e.type === "save" && e.team === "home"), a: cnt((e) => e.type === "save" && e.team === "away") },
+  ];
+  const fmtV = (m, side) => (m.dec ? m[side].toFixed(2) : m[side]);
+
+  /* xG race — cumulative within the active window, every 5'. */
+  const step = 5;
+  const lo = Math.floor(fromMin / step) * step;
+  const hi = Math.max(lo + step, Math.ceil(Math.max(toMin, 1) / step) * step);
+  const xgRace = [];
+  for (let m = lo; m <= hi; m += step) {
+    const top = Math.min(m, toMin);
+    xgRace.push({ min: m + "'", home: sumXg(SHOTS_HOME, fromMin, top), away: sumXg(SHOTS_AWAY, fromMin, top) });
+  }
+
+  /* Player load — fitness state at the end of the active window. */
+  const frac = Math.min(toMin / 90, 1.04);
+  const squad = SQUAD_LOAD.map((p) => {
+    const fresh = clamp(Math.round(100 - frac * (45 + (1 - p.stamina) * 95)), 10, 100);
+    return { ...p, dist: +(p.dist90 * frac).toFixed(1), sprints: Math.round(p.sprints90 * frac), fresh };
+  }).sort((a, b) => a.fresh - b.fresh);
+  const loadColor = (f) => (f >= 60 ? C.green : f >= 40 ? "#8C9199" : "#565B62");
+
+  return (
+    <div className="live-stats">
+      <div className="ls-scroll">
+        <div className="ls-live">
+          <span className="ls-live-badge"><span className="ls-pulse" /> Live</span>
+          <span className="ls-clock">{liveMin}'</span>
+        </div>
+
+        <div className="ls-score">
+          <span className="ls-score-team" style={{ color: LS_HOME }}>{homeLabel}</span>
+          <span className="ls-score-num">{goalsH}<span className="ls-score-sep">–</span>{goalsA}</span>
+          <span className="ls-score-team" style={{ color: LS_AWAY, textAlign: "right" }}>{awayLabel}</span>
+        </div>
+
+        <div className="ls-filter">
+          {WIN_OPTS.map(([k, l]) => (
+            <button key={k} className={"ls-fchip" + (win === k ? " on" : "")} onClick={() => setWin(k)}>{l}</button>
+          ))}
+        </div>
+
+        {win === "custom" && (
+          <div className="ls-range">
+            <div className="ls-range-row">
+              <span className="ls-range-lbl">From</span>
+              <input className="ls-slider" type="range" min={0} max={MATCH_MIN - 1} value={cFrom}
+                onChange={(e) => setCFrom(Math.min(+e.target.value, cTo - 1))} />
+              <span className="ls-range-val">{cFrom}'</span>
+            </div>
+            <div className="ls-range-row">
+              <span className="ls-range-lbl">To</span>
+              <input className="ls-slider" type="range" min={1} max={MATCH_MIN} value={cTo}
+                onChange={(e) => setCTo(Math.max(+e.target.value, cFrom + 1))} />
+              <span className="ls-range-val">{cTo}'</span>
+            </div>
+          </div>
+        )}
+
+        <div className="ls-block">
+          <div className="ls-sec-t">Possession <span className="ls-sec-sub">{winLabel}</span></div>
+          <div className="ls-poss">
+            <span className="ls-poss-v" style={{ color: LS_HOME }}>{possH}%</span>
+            <div className="ls-poss-bar">
+              <div className="ls-poss-h" style={{ width: possH + "%" }} />
+              <div className="ls-poss-a" style={{ width: possA + "%" }} />
+            </div>
+            <span className="ls-poss-v" style={{ color: LS_AWAY, textAlign: "right" }}>{possA}%</span>
+          </div>
+        </div>
+
+        <div className="ls-block">
+          <div className="ls-sec-t">Play Territory <span className="ls-sec-sub">where the ball is</span></div>
+          <div className="terr-bar">
+            <span className="terr-seg def" style={{ width: def + "%" }} />
+            <span className="terr-seg mid" style={{ width: mid + "%" }} />
+            <span className="terr-seg att" style={{ width: att + "%" }} />
+          </div>
+          <div className="terr-legend">
+            <span className="terr-item"><i className="terr-dot def" />Def {def}%</span>
+            <span className="terr-item"><i className="terr-dot mid" />Mid {mid}%</span>
+            <span className="terr-item"><i className="terr-dot att" />Att {att}%</span>
+          </div>
+        </div>
+
+        <div className="ls-block">
+          <div className="ls-sec-t">Team Comparison <span className="ls-sec-sub">{winLabel}</span></div>
+          <div className="cmp-list">
+            {metrics.map((m) => {
+              const tot = m.h + m.a;
+              const hPct = tot ? (m.h / tot) * 100 : 50;
+              return (
+                <div className="cmp-row" key={m.label}>
+                  <div className="cmp-head">
+                    <span className="cmp-v h">{fmtV(m, "h")}</span>
+                    <span className="cmp-lbl">{m.label}</span>
+                    <span className="cmp-v a">{fmtV(m, "a")}</span>
+                  </div>
+                  <div className="cmp-bar">
+                    {tot === 0 ? (
+                      <div className="cmp-empty" />
+                    ) : (
+                      <>
+                        <div className="cmp-h" style={{ width: hPct + "%" }} />
+                        <div className="cmp-a" style={{ width: (100 - hPct) + "%" }} />
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="ls-block">
+          <div className="ls-sec-t">xG Race <span className="ls-sec-sub">{winLabel} · {xgH.toFixed(2)} – {xgA.toFixed(2)}</span></div>
+          <ResponsiveContainer width="100%" height={150}>
+            <AreaChart data={xgRace} margin={{ top: 6, right: 8, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="lsXgH" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={LS_HOME} stopOpacity={.32} /><stop offset="100%" stopColor={LS_HOME} stopOpacity={.03} /></linearGradient>
+                <linearGradient id="lsXgA" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={LS_AWAY} stopOpacity={.28} /><stop offset="100%" stopColor={LS_AWAY} stopOpacity={.03} /></linearGradient>
+              </defs>
+              <CartesianGrid stroke={LS_GRID} vertical={false} />
+              <XAxis dataKey="min" tick={LS_TICK} axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={22} />
+              <YAxis tick={LS_TICK} axisLine={false} tickLine={false} width={26} />
+              <Tooltip content={<CoachTooltip />} cursor={{ stroke: LS_GRID }} />
+              <Area type="stepAfter" dataKey="home" name={homeLabel} stroke={LS_HOME} strokeWidth={2} fill="url(#lsXgH)" />
+              <Area type="stepAfter" dataKey="away" name={awayLabel} stroke={LS_AWAY} strokeWidth={2} fill="url(#lsXgA)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="ls-block">
+          <div className="ls-sec-t">Player Load <span className="ls-sec-sub">{homeLabel} · {winLabel}</span></div>
+          <div className="pl-list">
+            {squad.map((p) => (
+              <div className="pl-row" key={p.name}>
+                <div className="pl-top">
+                  <span className="pl-pos">{p.pos}</span>
+                  <span className="pl-name">{p.name}</span>
+                  {p.fresh < 40 && <span className="pl-flag">SUB?</span>}
+                  <span className="pl-meta">{p.dist} km · {p.sprints} sprints</span>
+                </div>
+                <div className="pl-bar"><span className="pl-fill" style={{ width: p.fresh + "%", background: loadColor(p.fresh) }} /></div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

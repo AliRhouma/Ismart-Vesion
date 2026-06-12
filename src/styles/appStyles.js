@@ -545,4 +545,77 @@ export const CSS = `
 .am-cmp-btn:hover{background:rgba(0,255,135,.08);border-color:rgba(0,255,135,.5)}
 
 @media(max-width:900px){.am-split{grid-template-columns:1fr}.am-metrics{grid-template-columns:1fr}.am-title{font-size:2rem}}
+
+/* ===== Live Stats panel (right rail) — minimalist monochrome palette ===== */
+.live-stats{display:flex;flex-direction:column;flex:1;min-height:0}
+.ls-scroll{flex:1;overflow-y:auto;padding:.75rem .85rem 1rem;display:flex;flex-direction:column;gap:1.05rem;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) rgba(255,255,255,.03)}
+.ls-scroll::-webkit-scrollbar{width:8px}
+.ls-scroll::-webkit-scrollbar-track{background:rgba(255,255,255,.02);border-left:1px solid ${C.border}}
+.ls-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);border-radius:999px;border:2px solid ${C.panel}}
+.ls-scroll::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.28)}
+.ls-live{display:flex;align-items:center;justify-content:space-between}
+.ls-live-badge{display:inline-flex;align-items:center;gap:.4rem;font-family:'Syne';font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:${C.green}}
+.ls-pulse{width:6px;height:6px;border-radius:50%;background:${C.green};box-shadow:0 0 6px rgba(0,255,135,.4);animation:pu 1.6s infinite}
+.ls-clock{font-family:'Syne';font-size:.72rem;font-weight:700;color:${C.muted};font-variant-numeric:tabular-nums}
+.ls-score{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:.6rem;padding:.1rem 0 .15rem}
+.ls-score-team{font-family:'Syne';font-size:.74rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ls-score-num{font-family:'Bebas Neue';font-size:1.95rem;line-height:1;color:#e7e9ec;letter-spacing:.05em;display:inline-flex;align-items:center;gap:.35rem;font-variant-numeric:tabular-nums}
+.ls-score-sep{color:${C.muted2};font-size:1.3rem}
+.ls-block{display:flex;flex-direction:column;gap:.5rem}
+.ls-sec-t{font-family:'Syne';font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:${C.muted};display:flex;align-items:baseline;gap:.4rem;flex-wrap:wrap}
+.ls-sec-sub{font-family:'DM Sans';font-size:.6rem;font-weight:600;text-transform:none;letter-spacing:0;color:${C.muted2}}
+/* time-window filter */
+.ls-filter{display:flex;flex-wrap:wrap;gap:.3rem}
+.ls-fchip{padding:.26rem .5rem;border-radius:100px;border:1px solid ${C.border};background:none;font-family:'Syne';font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:${C.muted};white-space:nowrap;cursor:pointer;transition:all .15s}
+.ls-fchip:hover{color:#fff;border-color:rgba(255,255,255,.16)}
+.ls-fchip.on{color:${C.green};border-color:rgba(0,255,135,.3);background:rgba(0,255,135,.08);box-shadow:0 0 10px rgba(0,255,135,.12)}
+.ls-range{display:flex;flex-direction:column;gap:.45rem;padding:.1rem .05rem 0}
+.ls-range-row{display:flex;align-items:center;gap:.55rem}
+.ls-range-lbl{font-family:'Syne';font-size:.56rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:${C.muted2};width:30px}
+.ls-range-val{font-family:'Syne';font-size:.68rem;font-weight:700;color:#cfd3d8;font-variant-numeric:tabular-nums;width:26px;text-align:right}
+.ls-slider{flex:1;-webkit-appearance:none;appearance:none;height:3px;border-radius:3px;background:rgba(255,255,255,.12);outline:none;cursor:pointer}
+.ls-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:13px;height:13px;border-radius:50%;background:${C.green};border:2px solid ${C.panel};cursor:pointer;box-shadow:0 0 8px rgba(0,255,135,.3);transition:background .15s}
+.ls-slider::-webkit-slider-thumb:hover{background:${C.greenDim}}
+.ls-slider::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:${C.green};border:2px solid ${C.panel};cursor:pointer;box-shadow:0 0 8px rgba(0,255,135,.3)}
+.ls-slider::-moz-range-track{height:3px;border-radius:3px;background:rgba(255,255,255,.12)}
+/* possession */
+.ls-poss{display:flex;align-items:center;gap:.55rem}
+.ls-poss-v{font-family:'Syne';font-size:.84rem;font-weight:700;font-variant-numeric:tabular-nums;min-width:36px}
+.ls-poss-bar{flex:1;height:8px;border-radius:6px;overflow:hidden;display:flex;background:rgba(255,255,255,.05)}
+.ls-poss-h{background:${C.green};transition:width .4s}
+.ls-poss-a{background:#6b7079;transition:width .4s}
+/* play territory */
+.terr-bar{display:flex;height:9px;border-radius:6px;overflow:hidden;gap:2px}
+.terr-seg{transition:width .4s;min-width:1px}
+.terr-seg.def{background:rgba(255,255,255,.1)}
+.terr-seg.mid{background:rgba(255,255,255,.26)}
+.terr-seg.att{background:${C.green}}
+.terr-legend{display:flex;justify-content:space-between;gap:.4rem}
+.terr-item{display:inline-flex;align-items:center;gap:.3rem;font-family:'DM Sans';font-size:.64rem;color:${C.muted}}
+.terr-dot{width:7px;height:7px;border-radius:2px;flex-shrink:0}
+.terr-dot.def{background:rgba(255,255,255,.1)}
+.terr-dot.mid{background:rgba(255,255,255,.26)}
+.terr-dot.att{background:${C.green}}
+/* team comparison */
+.cmp-list{display:flex;flex-direction:column;gap:.55rem}
+.cmp-row{display:flex;flex-direction:column;gap:.26rem}
+.cmp-head{display:grid;grid-template-columns:34px 1fr 34px;align-items:center;gap:.5rem}
+.cmp-v{font-family:'Syne';font-size:.78rem;font-weight:700;font-variant-numeric:tabular-nums}
+.cmp-v.h{color:${C.green}}
+.cmp-v.a{color:#6b7079;text-align:right}
+.cmp-lbl{font-family:'DM Sans';font-size:.68rem;color:${C.muted};text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cmp-bar{display:flex;height:5px;border-radius:4px;overflow:hidden;gap:2px}
+.cmp-h{background:${C.green};border-radius:4px 1px 1px 4px;min-width:2px;transition:width .4s}
+.cmp-a{background:#6b7079;border-radius:1px 4px 4px 1px;min-width:2px;transition:width .4s}
+.cmp-empty{flex:1;background:rgba(255,255,255,.05);border-radius:4px}
+/* player load / fitness */
+.pl-list{display:flex;flex-direction:column;gap:.6rem}
+.pl-row{display:flex;flex-direction:column;gap:.3rem}
+.pl-top{display:flex;align-items:center;gap:.4rem}
+.pl-pos{font-family:'Syne';font-size:.54rem;font-weight:700;color:${C.muted2};border:1px solid ${C.border};border-radius:4px;padding:.06rem .28rem;letter-spacing:.04em}
+.pl-name{font-family:'Syne';font-size:.72rem;font-weight:700;color:#dfe2e6}
+.pl-flag{font-family:'Syne';font-size:.52rem;font-weight:700;letter-spacing:.05em;color:${C.muted};border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.04);border-radius:4px;padding:.04rem .26rem}
+.pl-meta{margin-left:auto;font-family:'DM Sans';font-size:.62rem;color:${C.muted};white-space:nowrap;font-variant-numeric:tabular-nums}
+.pl-bar{height:5px;border-radius:4px;background:rgba(255,255,255,.05);overflow:hidden}
+.pl-fill{display:block;height:100%;border-radius:4px;transition:width .4s,background .4s}
 `;
